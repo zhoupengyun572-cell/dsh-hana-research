@@ -54,6 +54,14 @@
 - 每篇文献在证据页折叠填写结构化编码，显示已编码数量和必填完成状态
 - 删除已有编码值的字段默认被阻止，二次确认后才执行级联删除
 
+## 统一弹层与通知（v36）
+
+- 全部模态共用同一个弹层工厂：Tab 焦点圈闭、关闭后焦点还原到触发按钮、遮罩点击关闭（带拖拽误触保护）、入场自动聚焦与 aria 兜底
+- 新增样式化确认 / 选择 / 输入对话框，替换全部 7 处原生 `window.confirm`；破坏性操作使用红色强调确认键
+- 三套互不相干的 toast（reader-toast / undo-toast / #notice）合并为单一通知中心：底部居中堆叠、悬停暂停倒计时、支持「撤销」等内联动作按钮
+- 页眉常驻「命令面板」「设置」入口按钮，孤儿功能修复；命令面板快捷键定为 Alt P（Ctrl/⌘K 继续让给宿主 Harness）
+- 弹层内按 Esc 始终能关层（输入态不再拦截）；z-index 收敛为 menu/toast/modal 三个 token
+
 ## 质量评定与证据确定性（v35）
 
 - 按具体结局保存 RoB 2、ROBINS-I 与心理学通用框架的领域判断和支持依据
@@ -88,7 +96,7 @@ npm run dev            # watch 模式
 
 - 数据层测试：`node tests/store.test.mjs` 等全部 `tests/*.test.mjs`（node:test，临时目录自动清理）
 - 前端单元：`cd web; node tests/markdown.test.mjs`
-- 重启后：`GET /api/hana-research/health` 应返回 `{ok:true, releaseVersion:"v31", schemaVersion:15, ...}`
+- 重启后：`GET /api/hana-research/health` 应返回 `{ok:true, releaseVersion:"v36", schemaVersion:19, ...}`
 - 数据目录：`$DSH_HOME/plugin-data/hana-research/research.db`（WAL，schema v15）
 
 ## 回滚

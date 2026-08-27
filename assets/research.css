@@ -737,7 +737,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 /* ── 弹层：composer / 翻译设置 ───────────────────── */
 
 .project-composer, .modal-layer {
-  position: fixed; inset: 0; z-index: 40; display: grid; place-items: center; padding: 24px;
+  position: fixed; inset: 0; z-index: var(--research-z-modal); display: grid; place-items: center; padding: 24px;
   background: color-mix(in srgb, var(--research-ink) 30%, transparent);
   backdrop-filter: blur(4px);
   animation: layer-in 160ms ease both;
@@ -1555,6 +1555,10 @@ body::before {
   --research-radius-card: 12px;
   --research-motion-fast: 120ms;
   --research-motion-base: 180ms;
+  /* v36：层叠刻度。遮罩 < 通知 < 浮动菜单（保持既有实际层级关系） */
+  --research-z-modal: 40;
+  --research-z-toast: 70;
+  --research-z-menu: 90;
 }
 
 /* ── 首屏骨架（JS 加载前，页面不再纯空白） ── */
@@ -1647,7 +1651,7 @@ body::before {
    23px，产生横向滚动条与定位污染。 */
 .menu-anchor { position: relative; }
 .menu-pop {
-  position: fixed; left: auto; top: auto; z-index: 90;
+  position: fixed; left: auto; top: auto; z-index: var(--research-z-menu);
   width: 240px;
   max-width: calc(100vw - 24px);
   max-height: calc(100vh - 24px);
@@ -2282,7 +2286,7 @@ button[aria-busy="true"], .button[aria-busy="true"] { cursor: wait; }
 .command-foot { margin: 0; padding: 7px 14px; border-top: 1px solid var(--research-line); color: var(--research-muted); background: var(--research-card); font-size: 10px; }
 
 .undo-toast {
-  position: fixed; left: 50%; bottom: 24px; z-index: 70;
+  position: fixed; left: 50%; bottom: 24px; z-index: var(--research-z-toast);
   display: flex; align-items: center; gap: 14px; min-width: 250px; max-width: min(90vw, 480px); padding: 9px 10px 9px 14px;
   border: 1px solid var(--research-line-strong); border-radius: 9px;
   color: var(--research-ink); background: var(--research-paper); box-shadow: var(--research-shadow-3);
@@ -2293,6 +2297,61 @@ button[aria-busy="true"], .button[aria-busy="true"] { cursor: wait; }
 .undo-toast.leaving { pointer-events: none; animation: toast-out 120ms cubic-bezier(.4,0,1,1) both; }
 @keyframes toast-in { from { opacity: 0; transform: translate(-50%, 8px); } to { opacity: 1; transform: translate(-50%, 0); } }
 @keyframes toast-out { to { opacity: 0; transform: translate(-50%, 4px); } }
+
+/* ── v36：通知中心（堆叠 toast，统一取代 reader-toast / undo-toast / #notice）── */
+#hana-toast-root {
+  position: fixed; left: 50%; bottom: 22px; transform: translateX(-50%); z-index: var(--research-z-toast);
+  display: flex; flex-direction: column-reverse; align-items: center; gap: 8px;
+  pointer-events: none; width: min(560px, calc(100vw - 28px));
+}
+.hana-toast {
+  pointer-events: auto;
+  display: flex; align-items: center; gap: 9px; padding: 10px 14px;
+  border: 1px solid var(--research-line-strong); border-radius: 10px;
+  color: var(--research-ink); background: color-mix(in srgb, var(--research-paper) 94%, transparent);
+  box-shadow: var(--research-shadow-3);
+  font-size: 12.5px; line-height: 1.5;
+  animation: hana-toast-in 200ms cubic-bezier(.2,.9,.25,1.05) both;
+  max-width: 100%;
+}
+.hana-toast.leaving { pointer-events: none; animation: hana-toast-out 150ms cubic-bezier(.4,0,1,1) both; }
+.hana-toast-dot { flex: 0 0 auto; width: 8px; height: 8px; border-radius: 50%; background: var(--research-accent); }
+.hana-toast.success .hana-toast-dot { background: var(--research-ok); }
+.hana-toast.error .hana-toast-dot { background: var(--research-danger); }
+.hana-toast.action .hana-toast-dot { background: var(--research-accent); box-shadow: 0 0 0 3px var(--research-accent-soft); }
+.hana-toast-text { flex: 1; min-width: 0; overflow-wrap: anywhere; white-space: pre-line; }
+.hana-toast .chip-small { flex: 0 0 auto; color: var(--research-accent-ink); border-color: color-mix(in srgb, var(--research-accent) 42%, var(--research-line)); background: var(--research-accent-soft); }
+@keyframes hana-toast-in { from { opacity: 0; transform: translateY(10px) scale(.98); } to { opacity: 1; transform: none; } }
+@keyframes hana-toast-out { to { opacity: 0; transform: translateY(6px) scale(.98); } }
+
+/* ── v36：样式化确认 / 选择 / 输入对话框 ── */
+.hr-dialog-panel { width: min(420px, calc(100vw - 32px)); }
+.hr-dialog-message { white-space: pre-line; margin-bottom: 6px; }
+.hr-dialog-panel .composer-actions { margin-top: 16px; justify-content: flex-end; gap: 8px; }
+.hr-dialog-choices { flex-wrap: wrap; }
+.hr-dialog-choices .button.primary { flex: 1 1 auto; justify-content: center; }
+.button.danger-primary { color: #fff; border-color: var(--research-danger); background: var(--research-danger); }
+.button.danger-primary:hover { filter: brightness(1.08); background: var(--research-danger); }
+.button.danger-primary:focus-visible { outline-color: var(--research-danger); }
+
+/* ── v36：页眉常驻工具按钮（命令面板 / 设置入口）── */
+.hr-head-utils {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding-right: 8px; margin-right: 2px;
+  border-right: 1px solid var(--research-line);
+}
+.hr-head-tool {
+  display: grid; place-items: center; width: 30px; height: 30px; padding: 0;
+  border: 1px solid var(--research-line); border-radius: var(--research-radius-control);
+  color: var(--research-muted); background: var(--research-card);
+  transition: background 120ms ease, color 120ms ease, border-color 120ms ease, transform 90ms ease;
+}
+.hr-head-tool svg { width: 15px; height: 15px; }
+.hr-head-tool:hover {
+  color: var(--research-accent-ink); transform: translateY(-1px);
+  border-color: color-mix(in srgb, var(--research-accent) 45%, var(--research-line));
+  background: var(--research-accent-soft);
+}
 
 @media (max-width: 620px) {
   .command-trigger { width: 30px; padding: 0; }

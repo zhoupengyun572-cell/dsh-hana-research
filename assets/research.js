@@ -149,10 +149,13 @@ function installHanaShortcuts(enabled) {
         const btn = document.querySelector(`[data-drawer-tab="${tab}"]`);
         if (btn) { event.preventDefault(); btn.click(); }
       }
+      // v36：命令面板快捷键（Ctrl/⌘K 属于宿主 Harness，插件让位，故用 Alt P）。
+      if (event.key.toLowerCase() === 'p') { event.preventDefault(); renderCommandPalette(); return; }
       return;
     }
-    if (typing) return;
+    // v36：Esc 必须先于「输入中」判断——弹层内自动聚焦输入框后，Esc 仍要能关层。
     if (event.key === 'Escape') { closeModalLayer(); closeProjectDrawer(); return; }
+    if (typing) return;
     if (event.key.toLowerCase() === 'n' && workspace === 'projects') {
       const composer = document.querySelector('#project-composer');
       if (composer && composer.hidden) {
@@ -185,8 +188,7 @@ function agentWritePolicyInstruction() {
 function renderSettingsModal() {
   closeModalLayer();
   const s = loadHanaSettings();
-  const layer = document.createElement('div');
-  layer.className = 'modal-layer';
+  const layer = openModalLayer();
   const projectOptions = state.projects.length
     ? state.projects.map(p => `<option value="${escapeAttr(p.id)}" ${p.id === s.defaultProjectId ? 'selected' : ''}>${escapeHtml(p.title)}</option>`).join('')
     : '<option value="">（暂无项目）</option>';
@@ -217,6 +219,7 @@ function renderSettingsModal() {
       <label class="hr-setting-row"><span><b>启用快捷键</b></span><input type="checkbox" data-setting="shortcuts" ${s.shortcuts ? 'checked' : ''}></label>
       <ul class="hr-shortcut-list">
         <li><kbd>Ctrl / ⌘ K</kbd><span>Harness 快捷命令（由宿主处理）</span></li>
+        <li><kbd>Alt P</kbd><span>打开命令面板</span></li>
         <li><kbd>Alt 1 · 2 · 3</kbd><span>项目内切换 概览 / 证据 / 任务与笔记</span></li>
         <li><kbd>N</kbd><span>新建项目（项目库页）</span></li>
         <li><kbd>Esc</kbd><span>关闭遮罩层</span></li>
@@ -443,12 +446,22 @@ async function runButtonAction(button, options, operation) {
   }
 }
 
+// v36：页眉常驻工具按钮（命令面板 + 设置）。此前两者是没有任何入口的孤儿功能。
+const HR_ICON_PALETTE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 9V5a2 2 0 1 0-2 2h4Zm6 0V5a2 2 0 1 1 2 2h-4Zm-6 6v4a2 2 0 1 1-2-2h4Zm6 0v4a2 2 0 1 0 2-2h-4Z"/><rect x="9" y="9" width="6" height="6" rx="1"/></svg>';
+const HR_ICON_GEAR = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9c.26.604.852.997 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z"/></svg>';
+
 function shell(kicker, title, copy, body, topActions = '') {
   return `<div class="research-shell native-shell">
     <main class="app-content">
       <header class="native-page-head">
         <div><span class="native-page-kicker">${kicker}</span><h1>${title}</h1><p class="workspace-copy">${copy}</p></div>
-        ${topActions ? `<div class="native-page-actions">${topActions}</div>` : ''}
+        <div class="native-page-actions">
+          <span class="hr-head-utils">
+            <button type="button" class="hr-head-tool" data-open-command-palette title="命令面板（Alt P）" aria-label="打开命令面板">${HR_ICON_PALETTE}</button>
+            <button type="button" class="hr-head-tool" data-open-settings title="设置与个性化" aria-label="打开设置与个性化">${HR_ICON_GEAR}</button>
+          </span>
+          ${topActions}
+        </div>
       </header>
       ${body}
     </main>
@@ -1047,8 +1060,7 @@ async function refreshJournalBar(statusText = '') {
 // P2 增强：AI 期刊简报（宿主模型汇总最近同步与新增文献）
 async function renderJournalBrief() {
   closeModalLayer();
-  const layer = document.createElement('div');
-  layer.className = 'modal-layer';
+  const layer = openModalLayer();
   layer.innerHTML = `<div class="modal-panel modal-wide" role="dialog" aria-modal="true">
     <span class="composer-kicker">Journal brief</span>
     <h2>AI 期刊简报</h2>
@@ -1070,8 +1082,7 @@ async function renderJournalBrief() {
 // P2 增强：AI 项目综述草稿（汇总项目笔记）
 async function renderProjectSummary(projectId, projectTitle) {
   closeModalLayer();
-  const layer = document.createElement('div');
-  layer.className = 'modal-layer';
+  const layer = openModalLayer();
   layer.innerHTML = `<div class="modal-panel modal-wide" role="dialog" aria-modal="true">
     <span class="composer-kicker">Draft</span>
     <h2>综述草稿 · ${escapeHtml(projectTitle)}</h2>
@@ -1098,8 +1109,7 @@ function renderRelationModal(projectId, fromPaperId, papers) {
     return;
   }
   closeModalLayer();
-  const layer = document.createElement('div');
-  layer.className = 'modal-layer';
+  const layer = openModalLayer();
   layer.innerHTML = `<div class="modal-panel" role="dialog" aria-modal="true">
     <span class="composer-kicker">Argument chain</span>
     <h2>标注文献关系</h2>
@@ -1151,8 +1161,7 @@ function markdownCell(value) {
 // P2 增强（P4）：证据矩阵 modal（表格式概览 + 原生 CSV/XLSX/Markdown 导出）
 async function renderEvidenceMatrixModal(projectId, projectTitle) {
   closeModalLayer();
-  const layer = document.createElement('div');
-  layer.className = 'modal-layer';
+  const layer = openModalLayer();
   layer.innerHTML = `<div class="modal-panel modal-wide" role="dialog" aria-modal="true">
     <span class="composer-kicker">Evidence matrix</span>
     <h2>证据矩阵 · ${escapeHtml(projectTitle)}</h2>
@@ -1201,8 +1210,7 @@ async function renderEvidenceMatrixModal(projectId, projectTitle) {
 // P2 增强（P8）：笔记导出（Markdown / 原生 DOCX / 原生 PDF）
 function renderNoteExportModal(projectId, projectTitle) {
   closeModalLayer();
-  const layer = document.createElement('div');
-  layer.className = 'modal-layer';
+  const layer = openModalLayer();
   layer.innerHTML = `<div class="modal-panel" role="dialog" aria-modal="true">
     <span class="composer-kicker">Export notes</span>
     <h2>导出项目笔记</h2>
@@ -1256,8 +1264,7 @@ function downloadBlob(fileName, text, mime) {
 // 期刊源管理器：先识别再订阅，并在一个低密度界面内完成同步、启停与维护。
 async function renderJournalManagerModal() {
   closeModalLayer();
-  const layer = document.createElement('div');
-  layer.className = 'modal-layer';
+  const layer = openModalLayer();
   layer.innerHTML = `<div class="modal-panel journal-manager-panel" role="dialog" aria-modal="true" aria-labelledby="journal-manager-title">
     <header class="journal-manager-head">
       <div><span class="composer-kicker">期刊来源</span><h2 id="journal-manager-title">管理期刊</h2><p class="modal-copy">通过 ISSN 准确识别期刊。订阅后会自动保留最近三期文献。</p></div>
@@ -1365,7 +1372,7 @@ async function renderJournalManagerModal() {
     list.querySelectorAll('[data-delete-source]').forEach(button => button.addEventListener('click', async () => {
       const id = button.dataset.deleteSource;
       const source = managerData.sources.find(item => item.id === id);
-      if (!window.confirm(`移除「${source?.venue || '该期刊'}」的订阅？\n\n已同步到文献库的文章会保留。`)) return;
+      if (!(await confirmDialog({ title: '移除期刊订阅', message: `移除「${source?.venue || '该期刊'}」的订阅？已同步到文献库的文章会保留。`, confirmLabel: '移除订阅', danger: true }))) return;
       const action = await runButtonAction(button, { key: `journal-delete:${id}`, errorPrefix: '移除失败' }, () => api(`/journals/${encodeURIComponent(id)}`, { method: 'DELETE' }));
       if (action.ok) { showNotice('订阅已移除，已有文献仍保留在文献库。'); await refreshManagerData(); refreshJournalBar(); }
     }));
@@ -1451,12 +1458,7 @@ async function syncJournalsNow() {
     const inserted = (data?.logs?.[0]?.inserted) || 0;
     const pruned = (data?.logs?.[0]?.pruned) || 0;
     const failed = (data?.sources || []).filter(source => source.lastError).length;
-    const notice = document.querySelector('#notice');
-    if (notice) {
-      notice.textContent = `期刊更新完成：新增 ${inserted} 篇文献${pruned ? `，清理 ${pruned} 篇超出近三期的旧文献` : ''}${failed ? `，${failed} 个期刊源异常` : ''}。`;
-      notice.classList.add('visible');
-      window.setTimeout(() => notice.classList.remove('visible'), 6000);
-    }
+    showNotice(`期刊更新完成：新增 ${inserted} 篇文献${pruned ? `，清理 ${pruned} 篇超出近三期的旧文献` : ''}${failed ? `，${failed} 个期刊源异常` : ''}。`);
     // 刷新文献列表以显示新同步的文献
     await reloadPaperPage({ render: false });
     renderLiterature();
@@ -1487,8 +1489,7 @@ async function renderTranslateSettings() {
   } catch {
     /* 使用默认值 */
   }
-  const layer = document.createElement('div');
-  layer.className = 'modal-layer';
+  const layer = openModalLayer();
   layer.innerHTML = `<div class="modal-panel" role="dialog" aria-modal="true">
     <span class="composer-kicker">AI translation</span>
     <h2>翻译设置</h2>
@@ -1758,8 +1759,7 @@ function applyPaperFilters({ reset = true } = {}) {
 
 function renderCustomTagModal() {
   closeModalLayer();
-  const layer = document.createElement('div');
-  layer.className = 'modal-layer';
+  const layer = openModalLayer();
   layer.innerHTML = `<div class="modal-panel" role="dialog" aria-modal="true">
     <span class="composer-kicker">Custom topic</span>
     <h2>自定义主题</h2>
@@ -1808,8 +1808,7 @@ function saveTagColors(colors) {
 
 async function renderTagManagerModal() {
   closeModalLayer();
-  const layer = document.createElement('div');
-  layer.className = 'modal-layer';
+  const layer = openModalLayer();
   layer.innerHTML = `<div class="modal-panel modal-wide" role="dialog" aria-modal="true">
     <span class="composer-kicker">Tag manager</span>
     <h2>标签管理</h2>
@@ -1858,7 +1857,7 @@ async function renderTagManagerModal() {
     list.querySelectorAll('[data-tag-remove]').forEach(button => {
       button.addEventListener('click', async () => {
         const tag = button.dataset.tagRemove;
-        if (!window.confirm(`确定从全部笔记中删除标签「${tag}」？此操作不可恢复。`)) return;
+        if (!(await confirmDialog({ title: '删除标签', message: `确定从全部笔记中删除标签「${tag}」？此操作不可恢复。`, confirmLabel: '删除标签', danger: true }))) return;
         try {
           const result = await api('/notes/tags/remove', { method: 'POST', body: JSON.stringify({ tag }) });
           const colors = loadTagColors();
@@ -1942,8 +1941,7 @@ function duplicateCandidateHtml(candidate) {
 
 async function renderDuplicateReviewModal() {
   closeModalLayer();
-  const layer = document.createElement('div');
-  layer.className = 'modal-layer';
+  const layer = openModalLayer();
   layer.innerHTML = `<div class="modal-panel duplicate-review-modal" role="dialog" aria-modal="true" aria-label="重复文献检查">
     <div class="duplicate-review-head"><div><span class="composer-kicker">Library integrity</span><h2>重复文献检查</h2><p class="modal-copy">先看系统依据，再决定保留哪一条。系统不会自动合并；存在 DOI、笔记或研究数据冲突时会直接阻止。</p></div><button type="button" class="modal-icon-close" data-modal-cancel aria-label="关闭">×</button></div>
     <div class="duplicate-review-summary" data-duplicate-summary><span class="duplicate-scan-pulse"></span>正在扫描本地文献库…</div>
@@ -1988,7 +1986,7 @@ async function renderDuplicateReviewModal() {
         const sourcePaperId = targetPaperId === candidate.left.id ? candidate.right.id : candidate.left.id;
         const target = targetPaperId === candidate.left.id ? candidate.left : candidate.right;
         const source = sourcePaperId === candidate.left.id ? candidate.left : candidate.right;
-        if (!window.confirm(`确认把《${source.title}》合并到《${target.title}》？\n\n系统会保留所选记录，并迁移另一条记录的关联数据。`)) return;
+        if (!(await confirmDialog({ title: '合并文献记录', message: `确认把《${source.title}》合并到《${target.title}》？系统会保留所选记录，并迁移另一条记录的关联数据。`, confirmLabel: '确认合并', danger: true }))) return;
         const action = await runButtonAction(event.currentTarget, { key: `duplicate-merge:${candidate.pairKey}`, pendingLabel: '合并中…', slowMessage: '正在迁移文献关联数据…', errorPrefix: '安全合并失败' }, () => api('/papers/duplicates/merge', {
           method: 'POST', body: JSON.stringify({ targetPaperId, sourcePaperId }),
         }));
@@ -2091,8 +2089,7 @@ function renderSaveSearchModal() {
     return;
   }
   closeModalLayer();
-  const layer = document.createElement('div');
-  layer.className = 'modal-layer';
+  const layer = openModalLayer();
   layer.innerHTML = `<div class="modal-panel" role="dialog" aria-modal="true">
     <span class="composer-kicker">Saved search</span>
     <h2>保存检索</h2>
@@ -2134,8 +2131,7 @@ function renderSaveSearchModal() {
 // P2 增强：保存的检索列表（一键重跑 / 提醒开关 / 删除）
 async function renderSavedSearchesModal() {
   closeModalLayer();
-  const layer = document.createElement('div');
-  layer.className = 'modal-layer';
+  const layer = openModalLayer();
   layer.innerHTML = `<div class="modal-panel modal-wide" role="dialog" aria-modal="true">
     <span class="composer-kicker">Saved searches</span>
     <h2>保存的检索</h2>
@@ -2243,8 +2239,7 @@ function renderMethodologyModal(paperId) {
   if (!paper) return;
   const current = paper.methodology || [];
   closeModalLayer();
-  const layer = document.createElement('div');
-  layer.className = 'modal-layer';
+  const layer = openModalLayer();
   layer.innerHTML = `<div class="modal-panel" role="dialog" aria-modal="true">
     <span class="composer-kicker">Methodology</span>
     <h2>方法学标注</h2>
@@ -2355,8 +2350,7 @@ async function renderRelatedModal(paperId) {
   const paper = state.papers.find(item => item.id === paperId);
   if (!paper) return;
   closeModalLayer();
-  const layer = document.createElement('div');
-  layer.className = 'modal-layer';
+  const layer = openModalLayer();
   layer.innerHTML = `<div class="modal-panel modal-wide" role="dialog" aria-modal="true">
     <span class="composer-kicker">Related works</span>
     <h2>相似文献 · ${escapeHtml(paper.title.slice(0, 40))}</h2>
@@ -2384,8 +2378,7 @@ async function renderCitationsModal(paperId) {
   const paper = state.papers.find(item => item.id === paperId);
   if (!paper) return;
   closeModalLayer();
-  const layer = document.createElement('div');
-  layer.className = 'modal-layer';
+  const layer = openModalLayer();
   layer.innerHTML = `<div class="modal-panel modal-wide" role="dialog" aria-modal="true">
     <span class="composer-kicker">Citation network</span>
     <h2>引文网络 · ${escapeHtml(paper.title.slice(0, 40))}</h2>
@@ -2562,8 +2555,7 @@ async function renderCollectionModal(paperId) {
   closeModalLayer();
   const collections = await refreshCollections();
   const current = new Set(paper.collectionIds || []);
-  const layer = document.createElement('div');
-  layer.className = 'modal-layer';
+  const layer = openModalLayer();
   layer.innerHTML = `<div class="modal-panel" role="dialog" aria-modal="true">
     <span class="composer-kicker">Collections</span>
     <h2>文献集合</h2>
@@ -2644,7 +2636,16 @@ async function exportFavorites() {
       showNotice('还没有收藏任何文献。点击卡片上的书签图标收藏后即可导出。', true);
       return;
     }
-    const format = window.confirm('导出为 BibTeX（确定）还是 RIS（取消）？') ? 'bibtex' : 'ris';
+    const format = await choiceDialog({
+      title: '选择导出格式',
+      message: `共 ${favorites.length} 篇收藏文献，请选择引文导出格式。`,
+      choices: [
+        { label: 'BibTeX（.bib）', value: 'bibtex' },
+        { label: 'RIS（.ris）', value: 'ris' },
+      ],
+      cancelLabel: '取消导出',
+    });
+    if (!format) return;
     const response = await fetch(apiUrl('/papers/export'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -3166,8 +3167,7 @@ function renderCopilot(ctx) {
 
 function renderSuggestionBasis(sug, ctx) {
   closeModalLayer();
-  const layer = document.createElement('div');
-  layer.className = 'modal-layer';
+  const layer = openModalLayer();
   layer.innerHTML = `<div class="modal-panel" role="dialog" aria-modal="true" aria-label="建议依据">
     <span class="composer-kicker">Suggestion basis · 真实数据</span>
     <h2>${escapeHtml(sug.title)}</h2>
@@ -3336,8 +3336,7 @@ function readCodingFieldEditors(container) {
 
 function renderEvidenceFieldsModal(ctx) {
   closeModalLayer();
-  const layer = document.createElement('div');
-  layer.className = 'modal-layer';
+  const layer = openModalLayer();
   let draft = (ctx.coding?.fields || []).map(field => ({ ...field, options: [...(field.options || [])] }));
   const templates = ctx.coding?.templates || [];
   layer.innerHTML = `<form class="modal-panel modal-wide coding-fields-modal" role="dialog" aria-modal="true"><span class="composer-kicker">Coding schema</span><h2>研究编码字段</h2><p class="modal-copy">字段顺序会同步到证据矩阵和导出。应用模板只会替换下方草稿，点击保存后才会生效。</p><div class="coding-template-bar"><label><span>研究模板</span><select data-coding-template><option value="">选择模板…</option>${templates.map(template => `<option value="${escapeAttr(template.id)}">${escapeHtml(template.label)}</option>`).join('')}</select></label><button type="button" class="button" data-template-apply>应用到草稿</button><button type="button" class="button" data-field-add>＋ 新增字段</button></div><div class="coding-field-editors" data-field-editors></div><p class="screening-empty-criteria" data-fields-empty ${draft.length ? 'hidden' : ''}>还没有字段。可以应用研究模板，或从一个自定义字段开始。</p><div class="composer-actions"><button type="button" class="button" data-modal-cancel>取消</button><button type="submit" class="button primary">保存字段</button></div></form>`;
@@ -3388,7 +3387,13 @@ function renderEvidenceFieldsModal(ctx) {
       button.disabled = true;
       await save(false);
     } catch (error) {
-      if (error.code !== 'EVIDENCE_FIELDS_IN_USE' || !window.confirm(`${error.message}\n\n继续将永久删除这些字段下的 ${error.details?.valueCount || '已有'} 条编码值。是否继续？`)) {
+      const forced = error.code === 'EVIDENCE_FIELDS_IN_USE' && await confirmDialog({
+        title: '字段正在使用中',
+        message: `${error.message}\n继续将永久删除这些字段下的 ${error.details?.valueCount || '已有'} 条编码值。`,
+        confirmLabel: '永久删除并保存',
+        danger: true,
+      });
+      if (!forced) {
         button.disabled = false;
         showNotice(error.message, true);
         return;
@@ -3477,8 +3482,7 @@ function renderPrismaFlow(prisma) {
 function renderPrismaModal(ctx) {
   closeModalLayer();
   const prisma = ctx.screening?.prisma || { batches: [], warnings: [] };
-  const layer = document.createElement('div');
-  layer.className = 'modal-layer';
+  const layer = openModalLayer();
   const reasons = prisma.eligibility?.exclusionReasons || [];
   const batches = prisma.batches || [];
   layer.innerHTML = `<div class="modal-panel prisma-modal" role="dialog" aria-modal="true" aria-label="PRISMA 2020 流程台账">
@@ -3497,7 +3501,7 @@ function renderPrismaModal(ctx) {
   layer.querySelectorAll('[data-prisma-batch-edit]').forEach(button => button.addEventListener('click', () => renderPrismaBatchModal(ctx, batches.find(item => item.id === button.dataset.prismaBatchEdit))));
   layer.querySelectorAll('[data-prisma-batch-delete]').forEach(button => button.addEventListener('click', async () => {
     const batch = batches.find(item => item.id === button.dataset.prismaBatchDelete);
-    if (!batch || !window.confirm(`删除检索批次“${batch.sourceName}”？该操作不会删除项目文献。`)) return;
+    if (!batch || !(await confirmDialog({ title: '删除检索批次', message: `删除检索批次“${batch.sourceName}”？该操作不会删除项目文献。`, confirmLabel: '删除批次', danger: true }))) return;
     const action = await runButtonAction(button, { key: `prisma-delete:${batch.id}`, pendingLabel: '删除中…', errorPrefix: '检索批次删除失败' }, () => api(`/projects/${encodeURIComponent(ctx.projectId)}/prisma/batches/${encodeURIComponent(batch.id)}`, { method: 'DELETE' }));
     if (!action.ok) return;
     ctx.screening.prisma = action.value.prisma;
@@ -3509,8 +3513,7 @@ function renderPrismaModal(ctx) {
 function renderPrismaBatchModal(ctx, batch = null) {
   closeModalLayer();
   const item = batch || { sourceType: 'database', sourceName: '', query: '', searchedAt: new Date().toISOString().slice(0, 10), recordsFound: 0, duplicatesRemoved: 0, removedOther: 0, recordsImported: 0, notes: '' };
-  const layer = document.createElement('div');
-  layer.className = 'modal-layer';
+  const layer = openModalLayer();
   layer.innerHTML = `<form class="modal-panel prisma-batch-modal" role="dialog" aria-modal="true"><span class="composer-kicker">Search batch</span><h2>${batch ? '编辑检索批次' : '登记检索批次'}</h2><p class="modal-copy">请填写当次检索的原始数量。导入项目数应为去重和其他移除后的实际唯一记录数。</p>
     <div class="prisma-batch-grid"><label><span>来源类型</span><select name="sourceType"><option value="database" ${item.sourceType === 'database' ? 'selected' : ''}>数据库</option><option value="register" ${item.sourceType === 'register' ? 'selected' : ''}>注册平台</option><option value="other" ${item.sourceType === 'other' ? 'selected' : ''}>其他来源</option></select></label><label><span>来源名称</span><input name="sourceName" maxlength="120" required value="${escapeAttr(item.sourceName)}" placeholder="例如：PsycINFO"></label><label><span>检索日期</span><input name="searchedAt" type="date" value="${escapeAttr(String(item.searchedAt || '').slice(0, 10))}"></label><label class="wide"><span>检索式 / 路径</span><textarea name="query" maxlength="4000" placeholder="记录可复现的检索式、灰色文献路径或手工检索方式…">${escapeHtml(item.query)}</textarea></label></div>
     <fieldset class="prisma-count-grid"><legend>数量对账</legend><label><span>发现记录</span><input name="recordsFound" type="number" min="0" step="1" value="${item.recordsFound}"></label><label><span>去重移除</span><input name="duplicatesRemoved" type="number" min="0" step="1" value="${item.duplicatesRemoved}"></label><label><span>其他原因移除</span><input name="removedOther" type="number" min="0" step="1" value="${item.removedOther}"></label><label><span>导入项目</span><input name="recordsImported" type="number" min="0" step="1" value="${item.recordsImported}"></label></fieldset>
@@ -3533,8 +3536,7 @@ function renderPrismaBatchModal(ctx, batch = null) {
 
 function renderRetrievalReasonModal(ctx, paper, existingReason = '') {
   closeModalLayer();
-  const layer = document.createElement('div');
-  layer.className = 'modal-layer';
+  const layer = openModalLayer();
   layer.innerHTML = `<form class="modal-panel screening-decision-modal" role="dialog" aria-modal="true"><span class="composer-kicker">Report retrieval</span><h2>记录无法获取全文的原因</h2><p class="modal-copy"><strong>${escapeHtml(paper.title)}</strong><br>该记录会进入 PRISMA“未获取报告”，但不会自动把文献判定为排除。</p><label class="screening-reason-field"><span>未获取原因</span><textarea id="retrieval-reason-input" maxlength="500" required placeholder="例如：作者未回复；馆际互借仍无法取得；原始链接失效…">${escapeHtml(existingReason)}</textarea></label><div class="composer-actions"><button type="button" class="button" data-modal-cancel>取消</button><button type="submit" class="button primary">保存获取状态</button></div></form>`;
   document.body.append(layer);
   layer.querySelector('[data-modal-cancel]')?.addEventListener('click', closeModalLayer);
@@ -3561,8 +3563,7 @@ function parseScreeningCriteria(text, kind) {
 
 function renderScreeningCriteriaModal(ctx) {
   closeModalLayer();
-  const layer = document.createElement('div');
-  layer.className = 'modal-layer';
+  const layer = openModalLayer();
   layer.innerHTML = `<form class="modal-panel screening-criteria-modal" role="dialog" aria-modal="true" id="screening-criteria-form">
     <span class="composer-kicker">Eligibility criteria</span><h2>纳入与排除标准</h2>
     <p class="modal-copy">每行一条标准；可用“标准名称｜具体说明”记录操作性定义。标准属于当前项目，不会影响其他项目。</p>
@@ -3592,8 +3593,7 @@ function renderDualScreeningConfigModal(ctx) {
   closeModalLayer();
   const config = ctx.screening?.dualScreening?.config || { enabled: false, reviewerAName: '审查者 A', reviewerBName: '审查者 B' };
   const hasLegacy = (ctx.papers || []).some(paper => (paper.titleAbstractDecision || 'pending') !== 'pending' || (paper.fullTextDecision || 'pending') !== 'pending');
-  const layer = document.createElement('div');
-  layer.className = 'modal-layer';
+  const layer = openModalLayer();
   layer.innerHTML = `<form class="modal-panel dual-screening-config-modal" role="dialog" aria-modal="true">
     <span class="composer-kicker">Independent review</span><h2>双人筛选设置</h2><p class="modal-copy">两位审查者分别提交题录与全文判断。双方完成前不会展示对方的具体结论；冲突需仲裁后才形成最终结果。</p>
     <label class="dual-enable-row"><span><b>启用双人独立筛选</b><small>关闭后不会删除已经保存的双人记录</small></span><input type="checkbox" name="enabled" ${config.enabled ? 'checked' : ''}></label>
@@ -3623,8 +3623,7 @@ function renderDualScreeningDecisionModal(ctx, paper, stage, reviewerKey, existi
   const config = ctx.screening?.dualScreening?.config;
   const reviewerName = reviewerKey === 'a' ? config?.reviewerAName : config?.reviewerBName;
   const exclusionCriteria = (ctx.screening?.criteria || []).filter(item => item.kind === 'exclude' && item.enabled !== false);
-  const layer = document.createElement('div');
-  layer.className = 'modal-layer';
+  const layer = openModalLayer();
   layer.innerHTML = `<form class="modal-panel screening-decision-modal" role="dialog" aria-modal="true"><span class="composer-kicker">Independent exclusion</span><h2>${escapeHtml(reviewerName)} · 记录排除理由</h2><p class="modal-copy"><strong>${escapeHtml(paper.title)}</strong><br>${stage === 'title_abstract' ? '题录与摘要' : '全文'}的独立判断只写入当前审查者记录。</p>${exclusionCriteria.length ? `<fieldset><legend>从项目排除标准选择</legend><div class="criteria-chips">${exclusionCriteria.map(item => `<button type="button" data-criterion-reason="${escapeAttr(item.label)}">${escapeHtml(item.label)}</button>`).join('')}</div></fieldset>` : ''}<label class="screening-reason-field"><span>排除理由</span><textarea id="screening-reason-input" maxlength="500" required>${escapeHtml(existingReason)}</textarea></label><div class="composer-actions"><button type="button" class="button" data-modal-cancel>取消</button><button type="submit" class="button primary">保存独立判断</button></div></form>`;
   document.body.append(layer);
   const input = layer.querySelector('#screening-reason-input');
@@ -3645,8 +3644,7 @@ function renderScreeningConflictModal(ctx, paperId, stage) {
   const paper = ctx.papers.find(entry => entry.id === paperId);
   if (!item || !paper) return;
   const config = dual.config;
-  const layer = document.createElement('div');
-  layer.className = 'modal-layer';
+  const layer = openModalLayer();
   const reviewCard = (key, name) => `<article class="conflict-review ${escapeAttr(item[key].decision)}"><span>${escapeHtml(name)}</span><b>${SCREENING_DECISION_LABELS[item[key].decision]}</b><p>${escapeHtml(item[key].reason || '未填写补充理由')}</p></article>`;
   layer.innerHTML = `<form class="modal-panel screening-conflict-modal" role="dialog" aria-modal="true"><span class="composer-kicker">Consensus meeting</span><h2>筛选冲突仲裁</h2><p class="modal-copy"><strong>${escapeHtml(paper.title)}</strong><br>${stage === 'title_abstract' ? '题录与摘要' : '全文'}阶段的两份原始判断会永久保留，仲裁只生成最终结论。</p><div class="conflict-comparison">${reviewCard('a', config.reviewerAName)}<i>≠</i>${reviewCard('b', config.reviewerBName)}</div><label class="screening-reason-field"><span>最终结论</span><select name="decision">${['include', 'maybe', 'exclude'].map(value => `<option value="${value}">${SCREENING_DECISION_LABELS[value]}</option>`).join('')}</select></label><label class="screening-reason-field"><span>最终排除理由（选择排除时必填）</span><input name="reason" maxlength="500" placeholder="例如：非目标人群"></label><label class="screening-reason-field"><span>仲裁记录</span><textarea name="resolutionNote" maxlength="1000" placeholder="简要记录讨论依据、采用哪一方判断或补充核对结果…"></textarea></label><div class="composer-actions"><button type="button" class="button" data-modal-cancel>取消</button><button type="submit" class="button primary">保存仲裁结论</button></div></form>`;
   document.body.append(layer);
@@ -3663,7 +3661,7 @@ function renderDualConflictQueue(ctx) {
   const conflicts = ctx.screening?.dualScreening?.conflicts || [];
   if (!conflicts.length) { showNotice('当前没有待仲裁的筛选冲突。'); return; }
   closeModalLayer();
-  const layer = document.createElement('div'); layer.className = 'modal-layer';
+  const layer = openModalLayer();
   layer.innerHTML = `<div class="modal-panel dual-conflict-queue" role="dialog" aria-modal="true"><span class="composer-kicker">Conflict queue</span><h2>待仲裁冲突 · ${conflicts.length}</h2><p class="modal-copy">按文献逐项核对两位审查者的判断，再形成最终结论。</p><div>${conflicts.map((item, index) => `<article><span>${item.stage === 'title_abstract' ? '题录 / 摘要' : '全文'}</span><strong>${escapeHtml(item.title)}</strong><p><b>${escapeHtml(ctx.screening.dualScreening.config.reviewerAName)}：${SCREENING_DECISION_LABELS[item.a.decision]}</b><i>vs</i><b>${escapeHtml(ctx.screening.dualScreening.config.reviewerBName)}：${SCREENING_DECISION_LABELS[item.b.decision]}</b></p><button type="button" class="button primary" data-resolve-index="${index}">开始仲裁</button></article>`).join('')}</div><div class="composer-actions"><button type="button" class="button" data-modal-cancel>关闭</button></div></div>`;
   document.body.append(layer);
   layer.querySelector('[data-modal-cancel]').addEventListener('click', closeModalLayer);
@@ -3672,8 +3670,7 @@ function renderDualConflictQueue(ctx) {
 
 function renderScreeningDecisionModal(ctx, paper, stage, existingReason = '') {
   closeModalLayer();
-  const layer = document.createElement('div');
-  layer.className = 'modal-layer';
+  const layer = openModalLayer();
   const exclusionCriteria = (ctx.screening?.criteria || []).filter(item => item.kind === 'exclude' && item.enabled !== false);
   layer.innerHTML = `<form class="modal-panel screening-decision-modal" role="dialog" aria-modal="true">
     <span class="composer-kicker">Exclusion record</span><h2>记录排除理由</h2>
@@ -3704,8 +3701,7 @@ function renderScreeningDecisionModal(ctx, paper, stage, existingReason = '') {
 
 function renderScreeningBatchExclusionModal(ctx, paperIds, stage) {
   closeModalLayer();
-  const layer = document.createElement('div');
-  layer.className = 'modal-layer';
+  const layer = openModalLayer();
   const exclusionCriteria = (ctx.screening?.criteria || []).filter(item => item.kind === 'exclude' && item.enabled !== false);
   layer.innerHTML = `<form class="modal-panel screening-decision-modal" role="dialog" aria-modal="true"><span class="composer-kicker">Batch exclusion</span><h2>批量排除 ${paperIds.length} 篇文献</h2><p class="modal-copy">同一理由将写入所选文献的${stage === 'title_abstract' ? '题录与摘要' : '全文'}筛选记录。</p>${exclusionCriteria.length ? `<fieldset><legend>从项目排除标准选择</legend><div class="criteria-chips">${exclusionCriteria.map(item => `<button type="button" data-criterion-reason="${escapeAttr(item.label)}">${escapeHtml(item.label)}</button>`).join('')}</div></fieldset>` : ''}<label class="screening-reason-field"><span>共同排除理由</span><textarea id="screening-reason-input" maxlength="500" required></textarea></label><div class="composer-actions"><button type="button" class="button" data-modal-cancel>取消</button><button type="submit" class="button primary">确认批量排除</button></div></form>`;
   document.body.append(layer);
@@ -3751,7 +3747,7 @@ function qualityJudgmentOptions(template, current = 'pending') {
 function renderQualityModal(ctx) {
   closeModalLayer();
   const q = ctx.quality;
-  const layer = document.createElement('div'); layer.className = 'modal-layer';
+  const layer = openModalLayer();
   const paperRows = q.papers.map(item => `<article class="quality-paper-row"><div><span>${escapeHtml(item.outcomeLabel)}</span><strong>${escapeHtml(item.title)}</strong></div><div class="rob-domain-lights">${item.domains.map(domain => `<i class="rob-light ${escapeAttr(domain.finalJudgment || (domain.conflict ? 'conflict' : 'pending'))}" title="${escapeAttr(domain.label)}：${escapeAttr(ROB_JUDGMENT_LABELS[domain.finalJudgment] || (domain.conflict ? '冲突' : '未完成'))}">${escapeHtml(domain.label.slice(0,2))}</i>`).join('')}</div><span class="rob-overall ${escapeAttr(item.overall || (item.conflicts ? 'conflict' : 'pending'))}">${escapeHtml(item.conflicts ? `${item.conflicts} 项冲突` : ROB_JUDGMENT_LABELS[item.overall] || '未完成')}</span><button type="button" class="button" data-rob-edit="${escapeAttr(item.paperId)}">评定</button></article>`).join('');
   const gradeRows = q.gradeOutcomes.map(item => `<article class="grade-outcome-row"><div><span>${item.importance === 'critical' ? '关键结局' : item.importance === 'important' ? '重要结局' : '非重要结局'} · ${item.studies ?? '—'} 项研究</span><strong>${escapeHtml(item.title)}</strong><p>${escapeHtml(item.effectEstimate || '尚未填写效应估计')}</p></div><span class="grade-certainty grade-${item.confirmedCertainty || item.suggestedCertainty}"><small>${item.confirmedCertainty ? '已确认' : '建议'}</small><b>${GRADE_CERTAINTY_LABELS[item.confirmedCertainty || item.suggestedCertainty]}</b></span><button type="button" class="button" data-grade-edit="${escapeAttr(item.id)}">编辑</button></article>`).join('');
   layer.innerHTML = `<div class="modal-panel quality-modal" role="dialog" aria-modal="true"><header class="quality-modal-head"><div><span class="composer-kicker">Methodological adjudication board</span><h2>质量评定台</h2><p>把原始判断、分歧与最终裁决放在同一条可追溯链上。</p></div><button type="button" class="modal-icon-close" data-modal-cancel aria-label="关闭">×</button></header><section class="quality-config-strip"><label><span>评定工具</span><select data-quality-template>${q.templates.map(t=>`<option value="${escapeAttr(t.id)}" ${q.config.templateId===t.id?'selected':''}>${escapeHtml(t.label)}${t.status==='draft'?' · 草案':''}</option>`).join('')}</select></label><label class="quality-dual-toggle"><input type="checkbox" data-quality-dual ${q.config.dualEnabled?'checked':''}><span>双人独立评定</span></label><label><span>A</span><input data-quality-reviewer-a maxlength="60" value="${escapeAttr(q.config.reviewerAName)}"></label><label><span>B</span><input data-quality-reviewer-b maxlength="60" value="${escapeAttr(q.config.reviewerBName)}"></label><button class="button" type="button" data-quality-config-save>保存设置</button></section><nav class="quality-tabs"><button type="button" class="active" data-quality-tab="rob">风险偏倚 <b>${q.summary.complete}/${q.summary.total}</b></button><button type="button" data-quality-tab="grade">GRADE <b>${q.gradeOutcomes.length}</b></button></nav><section class="quality-tab-panel active" data-quality-panel="rob"><div class="quality-tool-note"><b>${escapeHtml(q.template.label)}</b><span>${escapeHtml(q.template.description)}${q.template.status==='draft'?' 当前版本仍为官方草案，请在报告中标明版本。':''}</span><div><a class="button" href="${escapeAttr(apiUrl(`/projects/${encodeURIComponent(ctx.projectId)}/quality/export?format=rob-csv`))}" download>导出评定 CSV</a><a class="button" href="${escapeAttr(apiUrl(`/projects/${encodeURIComponent(ctx.projectId)}/quality/export?format=json`))}" download>完整审计 JSON</a></div></div><div class="quality-paper-list">${paperRows || '<p class="quality-empty">项目中还没有可评定文献。</p>'}</div></section><section class="quality-tab-panel" data-quality-panel="grade"><div class="quality-tool-note"><b>按关键或重要结局评定</b><span>系统根据研究设计及升降级领域给出建议，最终等级需要研究者确认。</span><div><button type="button" class="button primary" data-grade-add>＋ 新增结局</button><a class="button" href="${escapeAttr(apiUrl(`/projects/${encodeURIComponent(ctx.projectId)}/quality/export?format=grade-csv`))}" download>导出证据概况 CSV</a></div></div><div class="grade-outcome-list">${gradeRows || '<p class="quality-empty">尚无 GRADE 结局。先添加综述中的关键结局。</p>'}</div></section><footer class="composer-actions"><span>${q.config.dualEnabled ? `两位评定者分别保存原始记录，双方提交后界面再展开差异与裁决入口。` : '可在上方启用双人独立评定。'}</span><button type="button" class="button" data-modal-cancel>关闭</button></footer></div>`;
@@ -3766,7 +3762,7 @@ function renderQualityModal(ctx) {
 
 function renderRobEditor(ctx,paperId){
   closeModalLayer(); const q=ctx.quality; const item=q.byPaper[paperId]; if(!item)return;
-  const layer=document.createElement('div');layer.className='modal-layer';
+  const layer=openModalLayer();
   const reviewerButtons=q.config.dualEnabled?`<div class="quality-reviewer-switch"><button type="button" class="active" data-rob-reviewer="a">A · ${escapeHtml(q.config.reviewerAName)}</button><button type="button" data-rob-reviewer="b">B · ${escapeHtml(q.config.reviewerBName)}</button></div>`:'';
   const renderForm=(reviewer='a')=>{ const peer=reviewer==='a'?'b':'a'; return `<form class="rob-editor-form"><label class="rob-outcome-label"><span>本次评定对应的结局</span><input name="outcomeLabel" maxlength="160" value="${escapeAttr(item.outcomeLabel)}"></label><div class="rob-domain-editor">${item.domains.map(domain=>{const own=domain[reviewer];const peerReview=domain[peer];const reveal=q.config.dualEnabled&&own?.judgment&&own.judgment!=='pending'&&peerReview?.judgment&&peerReview.judgment!=='pending';return `<article data-rob-domain="${escapeAttr(domain.id)}"><header><b>${escapeHtml(domain.label)}</b>${domain.conflict?'<span class="conflict">判断冲突</span>':domain.resolution?'<span class="resolved">已裁决</span>':''}</header><label><span>领域判断</span><select name="judgment">${qualityJudgmentOptions(q.template,own?.judgment||'pending')}</select></label><label><span>支持依据 / 页码</span><textarea name="support" maxlength="2000" placeholder="记录研究报告中的支持信息、页码与判断理由…">${escapeHtml(own?.support||'')}</textarea></label>${q.config.dualEnabled?`<p class="rob-peer-state">${reveal?`另一位：${escapeHtml(ROB_JUDGMENT_LABELS[peerReview.judgment])}`:peerReview?.judgment&&peerReview.judgment!=='pending'?'另一位已提交；你提交后显示结果。':'另一位尚未提交。'}</p>`:''}${domain.conflict?`<div class="rob-resolution"><select data-resolution-judgment>${q.template.judgments.map(v=>`<option value="${escapeAttr(v)}">${escapeHtml(ROB_JUDGMENT_LABELS[v])}</option>`).join('')}</select><input data-resolution-note maxlength="2000" placeholder="填写裁决依据（必填）"><button type="button" class="button" data-rob-resolve>保存裁决</button></div>`:''}</article>`}).join('')}</div><div class="composer-actions"><button type="button" class="button" data-back-quality>返回总览</button><button type="submit" class="button primary">保存 ${reviewer==='a'?escapeHtml(q.config.reviewerAName):escapeHtml(q.config.reviewerBName)} 的判断</button></div></form>`; };
   layer.innerHTML=`<div class="modal-panel rob-editor-modal"><header class="quality-modal-head"><div><span class="composer-kicker">Outcome-level risk of bias</span><h2>${escapeHtml(item.title)}</h2><p>${escapeHtml(q.template.label)} · 总体判断由各领域最终结论汇总，不覆盖原始判断。</p></div><button type="button" class="modal-icon-close" data-modal-cancel>×</button></header>${reviewerButtons}<div data-rob-form-host>${renderForm('a')}</div></div>`;document.body.append(layer);
@@ -3775,10 +3771,10 @@ function renderRobEditor(ctx,paperId){
 }
 
 function renderGradeEditor(ctx,outcomeId){
-  closeModalLayer();const current=ctx.quality.gradeOutcomes.find(x=>x.id===outcomeId)||null;const layer=document.createElement('div');layer.className='modal-layer';
+  closeModalLayer();const current=ctx.quality.gradeOutcomes.find(x=>x.id===outcomeId)||null;const layer=openModalLayer();
   const domainRows=ctx.quality.gradeDomains.map(domain=>{const value=current?.domains?.[domain.id]||{level:0,rationale:''};const levels=domain.direction==='down'?[0,-1,-2]:[0,1,2];return `<article data-grade-domain="${escapeAttr(domain.id)}"><b>${escapeHtml(domain.label)}</b><select>${levels.map(n=>`<option value="${n}" ${value.level===n?'selected':''}>${n===0?'不调整':n>0?`上调 ${n} 级`:`下调 ${Math.abs(n)} 级`}</option>`).join('')}</select><input maxlength="2000" value="${escapeAttr(value.rationale)}" placeholder="说明依据…"></article>`}).join('');
   layer.innerHTML=`<form class="modal-panel grade-editor-modal"><span class="composer-kicker">GRADE certainty assessment</span><h2>${current?'编辑结局':'新增结局'}</h2><p class="modal-copy">先记录每个领域的依据，再确认最终证据确定性。系统建议只是计算辅助。</p><div class="grade-meta-grid"><label><span>结局名称</span><input name="title" required maxlength="200" value="${escapeAttr(current?.title||'')}"></label><label><span>重要性</span><select name="importance">${[['critical','关键'],['important','重要'],['not_important','非重要']].map(([v,l])=>`<option value="${v}" ${current?.importance===v?'selected':''}>${l}</option>`).join('')}</select></label><label><span>证据起点</span><select name="studyDesign">${[['randomized','随机研究 · 高'],['observational','观察研究 · 低'],['other','其他 · 中等']].map(([v,l])=>`<option value="${v}" ${current?.studyDesign===v?'selected':''}>${l}</option>`).join('')}</select></label><label><span>研究数</span><input name="studies" type="number" min="0" value="${current?.studies??''}"></label><label><span>参与者</span><input name="participants" type="number" min="0" value="${current?.participants??''}"></label><label class="wide"><span>效应估计</span><input name="effectEstimate" maxlength="500" value="${escapeAttr(current?.effectEstimate||'')}" placeholder="例如：SMD = 0.42（95% CI 0.18–0.66）"></label></div><div class="grade-domain-editor">${domainRows}</div><div class="grade-confirm"><label><span>最终确定性</span><select name="confirmedCertainty"><option value="">暂不确认（保留系统建议）</option>${[4,3,2,1].map(n=>`<option value="${n}" ${current?.confirmedCertainty===n?'selected':''}>${GRADE_CERTAINTY_LABELS[n]}</option>`).join('')}</select></label><label><span>确认说明</span><textarea name="confirmationNote" maxlength="2000">${escapeHtml(current?.confirmationNote||'')}</textarea></label></div><div class="composer-actions">${current?'<button type="button" class="button danger" data-grade-delete>删除结局</button>':''}<button type="button" class="button" data-back-quality>取消</button><button type="submit" class="button primary">保存结局评定</button></div></form>`;document.body.append(layer);
-  layer.querySelector('[data-back-quality]').addEventListener('click',()=>renderQualityModal(ctx));layer.querySelector('[data-grade-delete]')?.addEventListener('click',async e=>{if(!confirm('删除该 GRADE 结局及全部领域判断？'))return;const action=await runButtonAction(e.currentTarget,{key:`grade-delete:${outcomeId}`,pendingLabel:'删除中…',errorPrefix:'删除失败'},()=>api(`/projects/${encodeURIComponent(ctx.projectId)}/grade/outcomes/${encodeURIComponent(outcomeId)}`,{method:'DELETE'}));if(action.ok){ctx.quality=await api(`/projects/${encodeURIComponent(ctx.projectId)}/quality`);renderQualityModal(ctx);}});
+  layer.querySelector('[data-back-quality]').addEventListener('click',()=>renderQualityModal(ctx));layer.querySelector('[data-grade-delete]')?.addEventListener('click',async e=>{if(!(await confirmDialog({title:'删除 GRADE 结局',message:'将删除该结局及其全部领域判断，不可恢复。',confirmLabel:'删除结局',danger:true})))return;const action=await runButtonAction(e.currentTarget,{key:`grade-delete:${outcomeId}`,pendingLabel:'删除中…',errorPrefix:'删除失败'},()=>api(`/projects/${encodeURIComponent(ctx.projectId)}/grade/outcomes/${encodeURIComponent(outcomeId)}`,{method:'DELETE'}));if(action.ok){ctx.quality=await api(`/projects/${encodeURIComponent(ctx.projectId)}/quality`);renderQualityModal(ctx);}});
   layer.querySelector('form').addEventListener('submit',async e=>{e.preventDefault();const form=e.currentTarget;const domains=[...form.querySelectorAll('[data-grade-domain]')].map(row=>({domainId:row.dataset.gradeDomain,level:Number(row.querySelector('select').value),rationale:row.querySelector('input').value}));const body={title:form.elements.title.value,importance:form.elements.importance.value,studyDesign:form.elements.studyDesign.value,studies:form.elements.studies.value,participants:form.elements.participants.value,effectEstimate:form.elements.effectEstimate.value,confirmedCertainty:form.elements.confirmedCertainty.value,confirmationNote:form.elements.confirmationNote.value,domains};const url=outcomeId?`/projects/${encodeURIComponent(ctx.projectId)}/grade/outcomes/${encodeURIComponent(outcomeId)}`:`/projects/${encodeURIComponent(ctx.projectId)}/grade/outcomes`;const action=await runButtonAction(e.submitter,{key:`grade-save:${outcomeId||'new'}`,pendingLabel:'保存中…',errorPrefix:'GRADE 评定保存失败'},()=>api(url,{method:outcomeId?'PUT':'POST',body:JSON.stringify(body)}));if(action.ok){ctx.quality=await api(`/projects/${encodeURIComponent(ctx.projectId)}/quality`);renderQualityModal(ctx);}});
 }
 
@@ -4259,8 +4255,7 @@ function readFocusPaperHint(projectId) {
 
 function confirmDocumentTranslation(projectId, attachmentId, title) {
   closeModalLayer();
-  const layer = document.createElement('div');
-  layer.className = 'modal-layer';
+  const layer = openModalLayer();
   layer.innerHTML = `<div class="modal-panel" role="dialog" aria-modal="true">
     <span class="composer-kicker">AI document translation</span>
     <h2>翻译全文并生成译文文档</h2>
@@ -4284,10 +4279,168 @@ function confirmDocumentTranslation(projectId, attachmentId, title) {
   });
 }
 
+// ── v36：统一弹层工厂 ──────────────────────────────────────────────────
+// 所有模态走同一条创建路径，统一获得：焦点圈闭（Tab 循环）、关闭后焦点还原、
+// 遮罩点击关闭（带拖拽选区误触保护）、入场自动聚焦与 aria 兜底。
+// 迁移约定：旧代码的 createElement + className='modal-layer' 两行直接换成
+// openModalLayer()，其余 innerHTML / append / 自定义绑定保持不变。
+
+const modalRegistry = new Set();
+
+/** 创建一个已登记的 .modal-layer；调用方随后设置 innerHTML 并 append 到 body。 */
+function openModalLayer() {
+  const layer = document.createElement('div');
+  layer.className = 'modal-layer';
+  layer.__hanaModal = { previousFocus: document.activeElement instanceof HTMLElement ? document.activeElement : null, backdropDown: null };
+  modalRegistry.add(layer);
+  // innerHTML 在同一同步任务里注入并 append；延后两帧装配，确保控件已就位。
+  window.requestAnimationFrame(() => window.requestAnimationFrame(() => setupModalBehaviors(layer)));
+  return layer;
+}
+
+/** 为单个弹层装配：aria 兜底、自动聚焦、Tab 圈闭、遮罩点击关闭、cancel 按钮兜底。 */
+function setupModalBehaviors(layer) {
+  if (!layer.isConnected || !modalRegistry.has(layer)) return;
+  const meta = layer.__hanaModal;
+  const panel = layer.querySelector('.modal-panel');
+  if (panel) {
+    if (!panel.getAttribute('role')) panel.setAttribute('role', 'dialog');
+    if (!panel.hasAttribute('aria-modal')) panel.setAttribute('aria-modal', 'true');
+    if (!panel.hasAttribute('aria-label')) {
+      const heading = panel.querySelector('h2');
+      if (heading?.textContent) panel.setAttribute('aria-label', heading.textContent.trim());
+    }
+  }
+  const focusTarget = panel?.querySelector('[autofocus]')
+    || panel?.querySelector('input:not([type="hidden"]):not([disabled]), select:not([disabled]), textarea:not([disabled])')
+    || panel?.querySelector('.button.primary:not([disabled]), button.primary:not([disabled])');
+  focusTarget?.focus({ preventScroll: true });
+  layer.querySelectorAll('[data-modal-cancel]').forEach(button => {
+    if (!button.__hanaCancelBound) {
+      button.__hanaCancelBound = true;
+      button.addEventListener('click', () => disposeModalLayer(layer));
+    }
+  });
+  layer.addEventListener('keydown', event => {
+    if (event.key !== 'Tab') return;
+    const focusables = [...layer.querySelectorAll('a[href], button:not([disabled]), input:not([type="hidden"]):not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])')]
+      .filter(el => el.offsetParent !== null || el === document.activeElement);
+    if (!focusables.length) return;
+    const first = focusables[0];
+    const last = focusables[focusables.length - 1];
+    if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
+    else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
+  });
+  layer.addEventListener('pointerdown', event => {
+    meta.backdropDown = event.target === layer ? { x: event.clientX, y: event.clientY } : null;
+  });
+  layer.addEventListener('click', event => {
+    if (event.target !== layer || !meta.backdropDown) return;
+    const movedX = Math.abs(event.clientX - meta.backdropDown.x);
+    const movedY = Math.abs(event.clientY - meta.backdropDown.y);
+    meta.backdropDown = null;
+    if (movedX < 6 && movedY < 6) disposeModalLayer(layer);
+  });
+}
+
+/** 关闭单个弹层：出场动画后移除，并把焦点还给触发元素。 */
+function disposeModalLayer(layer) {
+  if (!layer || !modalRegistry.has(layer)) return;
+  modalRegistry.delete(layer);
+  if (!layer.isConnected) return;
+  layer.classList.add('closing');
+  window.setTimeout(() => {
+    const previousFocus = layer.__hanaModal?.previousFocus;
+    layer.remove();
+    if (previousFocus?.isConnected) previousFocus.focus({ preventScroll: true });
+    layer.dispatchEvent(new CustomEvent('hana-modal-dismissed'));
+  }, 160);
+}
+
 function closeModalLayer() {
+  [...modalRegistry].forEach(layer => disposeModalLayer(layer));
+  // 兜底：未经工厂创建的历史遗留遮罩也一并收掉。
   document.querySelectorAll('.modal-layer').forEach(layer => {
-    layer.classList.add('closing');
-    window.setTimeout(() => layer.remove(), 160);
+    if (!modalRegistry.has(layer)) {
+      layer.classList.add('closing');
+      window.setTimeout(() => layer.remove(), 160);
+    }
+  });
+}
+
+// ── v36：样式化确认 / 选择 / 输入对话框（取代原生 window.confirm/prompt）──
+
+function dialogActionsHtml({ confirmLabel = '确认', cancelLabel = '取消', danger = false }) {
+  return `<div class="composer-actions"><button type="button" class="button" data-dialog-cancel>${escapeHtml(cancelLabel)}</button><button type="button" class="button primary${danger ? ' danger-primary' : ''}" data-dialog-confirm>${escapeHtml(confirmLabel)}</button></div>`;
+}
+
+function openDialogPanel({ kicker = 'Confirm', title, message = '', bodyHtml = '', danger = false, actionsHtml = '' }) {
+  const layer = openModalLayer();
+  layer.innerHTML = `<div class="modal-panel hr-dialog-panel${danger ? ' hr-dialog-danger' : ''}" role="dialog" aria-modal="true" aria-label="${escapeAttr(title)}">
+    ${kicker ? `<span class="composer-kicker">${escapeHtml(kicker)}</span>` : ''}
+    <h2>${escapeHtml(title)}</h2>
+    ${message ? `<p class="modal-copy hr-dialog-message">${escapeHtml(message)}</p>` : ''}
+    ${bodyHtml}
+    ${actionsHtml}
+  </div>`;
+  document.body.append(layer);
+  return layer;
+}
+
+/** 确认框：resolve(true)=确认；resolve(false)=取消/Esc/遮罩。 */
+function confirmDialog({ title = '确认操作', message = '', confirmLabel = '确认', cancelLabel = '取消', danger = false } = {}) {
+  return new Promise(resolve => {
+    let settled = false;
+    const finish = value => { if (settled) return; settled = true; resolve(value); disposeModalLayer(layer); };
+    const layer = openDialogPanel({ title, message, danger, actionsHtml: dialogActionsHtml({ confirmLabel, cancelLabel, danger }) });
+    layer.querySelector('[data-dialog-cancel]').addEventListener('click', () => finish(false));
+    layer.querySelector('[data-dialog-confirm]').addEventListener('click', () => finish(true));
+    layer.addEventListener('hana-modal-dismissed', () => finish(false));
+  });
+}
+
+/** 多选一对话框：resolve(所选 choice.value)；resolve(null)=取消。 */
+function choiceDialog({ title = '请选择', message = '', choices = [], cancelLabel = '取消' } = {}) {
+  return new Promise(resolve => {
+    let settled = false;
+    const finish = value => { if (settled) return; settled = true; resolve(value); disposeModalLayer(layer); };
+    const buttons = choices.map((choice, index) =>
+      `<button type="button" class="button primary" data-dialog-choice="${escapeAttr(String(index))}">${escapeHtml(choice.label)}</button>`).join('');
+    const layer = openDialogPanel({
+      title, message,
+      actionsHtml: `<div class="composer-actions hr-dialog-choices">${buttons}<button type="button" class="button" data-dialog-cancel>${escapeHtml(cancelLabel)}</button></div>`,
+    });
+    layer.querySelector('[data-dialog-cancel]').addEventListener('click', () => finish(null));
+    layer.querySelectorAll('[data-dialog-choice]').forEach(button =>
+      button.addEventListener('click', () => finish(choices[Number(button.dataset.dialogChoice)].value)));
+    layer.addEventListener('hana-modal-dismissed', () => finish(null));
+  });
+}
+
+/** 文本输入对话框：resolve(去除首尾空白的字符串)；resolve(null)=取消。 */
+function promptDialog({ title = '输入', message = '', defaultValue = '', placeholder = '', multiline = false, required = true, maxlength = 500, confirmLabel = '确认', cancelLabel = '取消' } = {}) {
+  return new Promise(resolve => {
+    let settled = false;
+    const finish = value => { if (settled) return; settled = true; resolve(value); disposeModalLayer(layer); };
+    const fieldId = `hr-prompt-field-${Math.random().toString(36).slice(2, 8)}`;
+    const control = multiline
+      ? `<textarea id="${fieldId}" rows="3" maxlength="${maxlength}" placeholder="${escapeAttr(placeholder)}">${escapeHtml(defaultValue)}</textarea>`
+      : `<input id="${fieldId}" type="text" maxlength="${maxlength}" placeholder="${escapeAttr(placeholder)}" value="${escapeAttr(defaultValue)}" autocomplete="off">`;
+    const layer = openDialogPanel({
+      title, message,
+      bodyHtml: `<form data-dialog-form class="settings-form"><label for="${fieldId}">${control}</label></form>`,
+      actionsHtml: dialogActionsHtml({ confirmLabel, cancelLabel }),
+    });
+    const submit = () => {
+      const input = layer.querySelector(`#${fieldId}`);
+      const value = input.value.trim();
+      if (required && !value) { input.focus(); input.reportValidity?.(); return; }
+      finish(value);
+    };
+    layer.querySelector('[data-dialog-cancel]').addEventListener('click', () => finish(null));
+    layer.querySelector('[data-dialog-confirm]').addEventListener('click', submit);
+    layer.querySelector('[data-dialog-form]').addEventListener('submit', event => { event.preventDefault(); submit(); });
+    layer.addEventListener('hana-modal-dismissed', () => finish(null));
   });
 }
 
@@ -4329,12 +4482,7 @@ function pollTranslationDoc(docId, projectId, attachmentId) {
         window.clearInterval(timer);
         refreshTranslationPanel(projectId, attachmentId, doc.status === 'done' ? '译文文档已生成。' : `翻译失败：${doc.error || '未知错误'}`);
         if (doc.status === 'done') {
-          const notice = document.querySelector('#notice');
-          if (notice) {
-            notice.textContent = '译文文档已生成，可在该文献卡片下展开查看。';
-            notice.classList.add('visible');
-            window.setTimeout(() => notice.classList.remove('visible'), 5000);
-          }
+          showNotice('译文文档已生成，可在该文献卡片下展开查看。');
         }
       } else {
         refreshTranslationPanel(projectId, attachmentId, `正在翻译… ${doc.progressTotal ? `${doc.progressDone} / ${doc.progressTotal} 段` : '准备中'}`);
@@ -5547,13 +5695,66 @@ function animateStageScroll(stage, from, to) {
   requestAnimationFrame(step);
 }
 
-function showReaderToast(message, isError = false) {
-  document.querySelector('.reader-toast')?.remove();
+// ── v36：通知中心（原 reader-toast / undo-toast / #notice 三套合并）──────
+
+let hanaToastRoot = null;
+
+function ensureHanaToastRoot() {
+  if (hanaToastRoot?.isConnected) return hanaToastRoot;
+  hanaToastRoot = document.createElement('div');
+  hanaToastRoot.id = 'hana-toast-root';
+  hanaToastRoot.setAttribute('role', 'status');
+  hanaToastRoot.setAttribute('aria-live', 'polite');
+  document.body.append(hanaToastRoot);
+  return hanaToastRoot;
+}
+
+/**
+ * 堆叠式通知。tone：info | success | error | action。
+ * 提供 actionLabel 时展示动作按钮（如「撤销」）；onAction 收到 { button }，
+ * 动作执行期间自动暂停倒计时，结束后本条自行退场。
+ */
+function showHanaToast({ message, tone = 'info', duration = 3800, actionLabel = '', onAction = null }) {
+  const rootEl = ensureHanaToastRoot();
+  while (rootEl.children.length >= 4) rootEl.firstElementChild.remove();
   const toast = document.createElement('div');
-  toast.className = `reader-toast${isError ? ' error' : ''}`;
-  toast.textContent = message;
-  document.querySelector('.pdf-reader-shell')?.append(toast);
-  window.setTimeout(() => toast.remove(), 3200);
+  toast.className = `hana-toast ${tone}`;
+  toast.innerHTML = `<span class="hana-toast-dot" aria-hidden="true"></span><span class="hana-toast-text"></span>${actionLabel ? `<button type="button" class="chip-small"><span data-action-label>${escapeHtml(actionLabel)}</span></button>` : ''}`;
+  toast.querySelector('.hana-toast-text').textContent = message;
+  rootEl.append(toast);
+  let timer = 0;
+  let remaining = duration;
+  let startedAt = performance.now();
+  const dismiss = () => {
+    window.clearTimeout(timer);
+    if (!toast.isConnected || toast.classList.contains('leaving')) return;
+    toast.classList.add('leaving');
+    window.setTimeout(() => toast.remove(), 150);
+  };
+  const pause = () => {
+    window.clearTimeout(timer);
+    remaining -= performance.now() - startedAt;
+  };
+  const resume = () => {
+    startedAt = performance.now();
+    timer = window.setTimeout(dismiss, Math.max(600, remaining));
+  };
+  toast.addEventListener('mouseenter', pause);
+  toast.addEventListener('mouseleave', resume);
+  resume();
+  if (onAction) {
+    const button = toast.querySelector('button');
+    button.addEventListener('click', async () => {
+      pause();
+      try { await onAction({ button }); }
+      finally { dismiss(); }
+    });
+  }
+  return toast;
+}
+
+function showReaderToast(message, isError = false) {
+  showNotice(message, isError);
 }
 
 function publishReaderContext(type = 'reader-context') {
@@ -5573,36 +5774,19 @@ function publishReaderContext(type = 'reader-context') {
 }
 
 function showUndoToast(message, restore) {
-  document.querySelector('.undo-toast')?.remove();
-  window.clearTimeout(showUndoToast.timer);
-  const toast = document.createElement('div');
-  toast.className = 'undo-toast';
-  toast.setAttribute('role', 'status');
-  toast.setAttribute('aria-live', 'polite');
-  toast.innerHTML = `<span>${escapeHtml(message)}</span><button type="button" class="chip-small"><span data-action-label>撤销</span></button>`;
-  document.body.append(toast);
-  const button = toast.querySelector('button');
-  button.addEventListener('click', async () => {
-    const action = await runButtonAction(button, { key: `undo:${Date.now()}`, pendingLabel: '恢复中', errorPrefix: '撤销失败' }, restore);
-    if (!action.ok) return;
-    window.clearTimeout(showUndoToast.timer);
-    toast.classList.add('leaving');
-    window.setTimeout(() => toast.remove(), 140);
+  showHanaToast({
+    message,
+    tone: 'action',
+    duration: 7000,
+    actionLabel: '撤销',
+    onAction: async ({ button }) => {
+      await runButtonAction(button, { key: `undo:${Date.now()}`, pendingLabel: '恢复中', errorPrefix: '撤销失败' }, restore);
+    },
   });
-  showUndoToast.timer = window.setTimeout(() => {
-    toast.classList.add('leaving');
-    window.setTimeout(() => toast.remove(), 140);
-  }, 7000);
 }
 
 function showNotice(message, isError = false) {
-  const notice = document.querySelector('#notice');
-  if (!notice) return;
-  notice.textContent = message;
-  notice.classList.toggle('error', isError);
-  notice.classList.add('visible');
-  window.clearTimeout(showNotice.timer);
-  showNotice.timer = window.setTimeout(() => notice.classList.remove('visible'), 4200);
+  showHanaToast({ message, tone: isError ? 'error' : 'info', duration: isError ? 5200 : 3800 });
 }
 
 window.addEventListener('unhandledrejection', event => {

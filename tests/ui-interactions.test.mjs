@@ -106,7 +106,7 @@ test('literature controls disclose progressively and high-frequency actions upda
   librarySearch.value = '';
   librarySearch.dispatchEvent(new window.Event('input', { bubbles: true }));
   await wait(240);
-  assert.equal(window.document.querySelectorAll('.native-page-actions > *').length, 1);
+  assert.equal(window.document.querySelectorAll('.native-page-actions > *').length, 2, '页眉动作区 = 常驻工具组（命令面板/设置）+ 业务按钮');
   assert.ok(window.document.querySelector('#manage-menu-pop #agent-literature'));
   const toggle = window.document.querySelector('#toggle-filters');
   const panel = window.document.querySelector('#filter-panel');
@@ -117,8 +117,10 @@ test('literature controls disclose progressively and high-frequency actions upda
   assert.equal(toggle.getAttribute('aria-expanded'), 'true');
 
   window.document.querySelector('#agent-literature').click();
-  assert.match(window.document.querySelector('#notice').textContent, /Agent/);
-  assert.equal(window.document.querySelector('#notice').getAttribute('aria-live'), 'polite');
+  const agentToastText = window.document.querySelector('.hana-toast .hana-toast-text');
+  assert.ok(agentToastText, '通知已迁移到统一 toast 中心');
+  assert.match(agentToastText.textContent, /Agent/);
+  assert.equal(window.document.querySelector('#hana-toast-root').getAttribute('aria-live'), 'polite');
   assert.ok(window.document.querySelector('.journal-disclosure'));
   const more = window.document.querySelector('.paper-more');
   assert.ok(more);
@@ -150,7 +152,7 @@ test('literature controls disclose progressively and high-frequency actions upda
   assert.equal(readButton.textContent, '已读');
   await wait(20);
   assert.equal(readButton.textContent, '在读');
-  assert.match(window.document.querySelector('#notice').textContent, /模拟失败/);
+  assert.match(window.document.querySelector('.hana-toast.error .hana-toast-text').textContent, /模拟失败/);
 
   const liveSearch = window.document.querySelector('#live-search');
   liveSearch.value = '新文献';
@@ -340,8 +342,8 @@ test('project navigation stays focused and task/note writes update the drawer in
   await wait(30);
   assert.equal(panel.querySelector('[data-note-id="n4"]'), null);
   assert.equal(window.document.querySelector('#drawer-panel'), panel);
-  const undoToast = window.document.querySelector('.undo-toast');
-  assert.ok(undoToast);
+  const undoToast = window.document.querySelector('.hana-toast.action');
+  assert.ok(undoToast, '撤销提示已迁移到统一通知中心');
   undoToast.querySelector('button').click();
   await wait(40);
   assert.ok(panel.querySelector('[data-note-id="n5"]'));
