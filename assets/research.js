@@ -1,5 +1,37 @@
 const root = document.querySelector('#research-root');
+
+// ── v38b：安全存储访问层 ──
+// 宿主以受限方式嵌入（sandbox / 不透明祖先）时，localStorage 访问会直接抛
+// SecurityError。启动期任何一次裸读取都会中断模块求值，页面永远停在骨架屏。
+// 统一经由 safeStorage 读写；存储不可用时静默退化为内存态（会话内仍可用）。
+const safeStorage = (() => {
+  const mem = {};
+  const usable = store => {
+    try {
+      const probeKey = '__hana_probe__';
+      store.setItem(probeKey, '1');
+      store.removeItem(probeKey);
+      return true;
+    } catch { return false; }
+  };
+  let ls = null, ss = null;
+  try { if (typeof localStorage !== 'undefined' && usable(localStorage)) ls = localStorage; } catch { /* ignore */ }
+  try { if (typeof sessionStorage !== 'undefined' && usable(sessionStorage)) ss = sessionStorage; } catch { /* ignore */ }
+  return {
+    get(key) { try { return ls ? ls.getItem(key) : (Object.prototype.hasOwnProperty.call(mem, key) ? mem[key] : null); } catch { return null; } },
+    set(key, value) { try { if (ls) ls.setItem(key, value); else mem[key] = String(value); } catch { /* ignore */ } },
+    remove(key) { try { if (ls) ls.removeItem(key); else delete mem[key]; } catch { /* ignore */ } },
+    sessionGet(key) { try { return ss ? ss.getItem(key) : null; } catch { return null; } },
+    sessionSet(key, value) { try { ss && ss.setItem(key, value); } catch { /* ignore */ } },
+    sessionRemove(key) { try { ss && ss.removeItem(key); } catch { /* ignore */ } },
+  };
+})();
+
 let workspace = document.body.dataset.workspace === 'projects' ? 'projects' : 'literature';
+
+// v38b：Harness 宿主已自带「文献中心 / 项目库」页签（v23 裁决：插件内不重复导航）。
+// 内嵌于宿主 iframe 时隐藏插件内切换器；独立打开（深链接/浏览器直达）时保留，页面才可互切。
+const HANA_EMBEDDED = (() => { try { return window.parent !== window; } catch { return true; } })();
 const researchChannel = typeof BroadcastChannel === 'function' ? new BroadcastChannel('hana-research-reader-v1') : null;
 const searchIcon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg>';
 const sparkIcon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 3v4M12 17v4M3 12h4M17 12h4M5.6 5.6l2.8 2.8M15.6 15.6l2.8 2.8M18.4 5.6l-2.8 2.8M8.4 15.6l-2.8 2.8"/></svg>';
@@ -17,7 +49,7 @@ const thumbnailsIcon = '<svg width="14" height="14" viewBox="0 0 24 24" fill="no
 const state = {
   projects: [],
   papers: [],
-  selectedProjectId: localStorage.getItem('hana-research-target-project') || '',
+  selectedProjectId: safeStorage.get('hana-research-target-project') || '',
   activeTopic: '全部',
   activeVenue: '全部',
   activeReadStatus: '全部',
@@ -39,7 +71,7 @@ const state = {
   searchAI: null,
   searchAIError: null,
   searchBusy: false,
-  filtersOpen: localStorage.getItem('hana-research-filters-open') === '1',
+  filtersOpen: safeStorage.get('hana-research-filters-open') === '1',
   paperRenderLimit: 60,
   paperServerPaged: false,
   paperPagination: { page: 1, pageSize: 60, total: 0, totalPages: 1, hasMore: false },
@@ -69,7 +101,7 @@ function handoffToAgent(prompt, label = '研究上下文已加入输入框') {
 
 function loadCustomTags() {
   try {
-    const parsed = JSON.parse(localStorage.getItem('hana-research-custom-tags') || '[]');
+    const parsed = JSON.parse(safeStorage.get('hana-research-custom-tags') || '[]');
     return Array.isArray(parsed) ? parsed.map(String).filter(Boolean).slice(0, 12) : [];
   } catch {
     return [];
@@ -94,7 +126,7 @@ function defaultHanaSettings() {
 
 function loadHanaSettings() {
   try {
-    const raw = JSON.parse(localStorage.getItem(HANA_SETTINGS_KEY) || '{}');
+    const raw = JSON.parse(safeStorage.get(HANA_SETTINGS_KEY) || '{}');
     return { ...defaultHanaSettings(), ...(raw && typeof raw === 'object' ? raw : {}) };
   } catch {
     return defaultHanaSettings();
@@ -105,7 +137,7 @@ let hanaSettings = loadHanaSettings();
 
 function persistHanaSettings(patch) {
   hanaSettings = { ...hanaSettings, ...(patch || {}) };
-  try { localStorage.setItem(HANA_SETTINGS_KEY, JSON.stringify(hanaSettings)); } catch { /* 忽略存储失败 */ }
+  try { safeStorage.set(HANA_SETTINGS_KEY, JSON.stringify(hanaSettings)); } catch { /* 忽略存储失败 */ }
   applyHanaSettings();
 }
 
@@ -118,7 +150,7 @@ function applyHanaSettings() {
   document.body.classList.toggle('hr-motion-reduced', s.motion === 'reduced');
   document.body.classList.toggle('hr-motion-standard', s.motion === 'standard');
   if (s.defaultProjectId) {
-    try { localStorage.setItem('hana-research-target-project', s.defaultProjectId); } catch { /* ignore */ }
+    try { safeStorage.set('hana-research-target-project', s.defaultProjectId); } catch { /* ignore */ }
   }
   installHanaShortcuts(Boolean(s.shortcuts));
 }
@@ -410,7 +442,7 @@ function renderSettingsModal() {
       else patch[key] = el.value;
       persistHanaSettings(patch);
       if (key === 'defaultProjectId' && el.value) {
-        try { localStorage.setItem('hana-research-target-project', el.value); } catch { /* ignore */ }
+        try { safeStorage.set('hana-research-target-project', el.value); } catch { /* ignore */ }
         state.selectedProjectId = el.value;
       }
     });
@@ -630,10 +662,10 @@ function shell(kicker, title, copy, body, topActions = '') {
   return `<div class="research-shell native-shell">
     <header class="app-bar">
       <div class="app-bar-brand"><span class="app-bar-mark" aria-hidden="true">${HR_ICON_BRAND}</span><span class="app-bar-title">文献研究台</span></div>
-      <nav class="workspace-switcher" aria-label="工作区切换">
+      ${HANA_EMBEDDED ? '' : `<nav class="workspace-switcher" aria-label="工作区切换">
         <a href="/ui/hana-research/literature" data-route="literature">文献中心</a>
         <a href="/ui/hana-research/projects" data-route="projects">项目库</a>
-      </nav>
+      </nav>`}
       <span class="app-bar-spacer"></span>
       <span class="hr-head-utils app-bar-utils">
         <button type="button" class="hr-head-tool" data-open-command-palette title="命令面板（Alt P）" aria-label="打开命令面板">${HR_ICON_PALETTE}</button>
@@ -768,9 +800,9 @@ async function loadLiterature() {
   try {
     let restored = false;
     try {
-      const raw = sessionStorage.getItem('hana-return-literature');
+      const raw = safeStorage.sessionGet('hana-return-literature');
       if (raw) {
-        sessionStorage.removeItem('hana-return-literature');
+        safeStorage.sessionRemove('hana-return-literature');
         const saved = JSON.parse(raw);
         if (saved.query !== undefined) state.query = String(saved.query);
         if (saved.activeTopic) state.activeTopic = String(saved.activeTopic);
@@ -811,7 +843,7 @@ async function loadLiterature() {
 // 离开文献中心时保存筛选与滚动状态（供阅读器返回时恢复）
 function persistLiteratureState() {
   try {
-    sessionStorage.setItem('hana-literature-state', JSON.stringify({
+    safeStorage.sessionSet('hana-literature-state', JSON.stringify({
       query: state.query || '',
       activeTopic: state.activeTopic || '',
       activeVenue: state.activeVenue || '',
@@ -829,7 +861,7 @@ function ensureSelectedProject() {
   if (!state.projects.some(project => project.id === state.selectedProjectId)) {
     state.selectedProjectId = state.projects[0]?.id || '';
   }
-  if (state.selectedProjectId) localStorage.setItem('hana-research-target-project', state.selectedProjectId);
+  if (state.selectedProjectId) safeStorage.set('hana-research-target-project', state.selectedProjectId);
 }
 
 function renderLiterature(message = '') {
@@ -901,7 +933,7 @@ function renderLiterature(message = '') {
   document.querySelector('#duplicate-review')?.addEventListener('click', renderDuplicateReviewModal);
   document.querySelector('#toggle-filters')?.addEventListener('click', event => {
     state.filtersOpen = !state.filtersOpen;
-    try { localStorage.setItem('hana-research-filters-open', state.filtersOpen ? '1' : '0'); } catch { /* ignore */ }
+    try { safeStorage.set('hana-research-filters-open', state.filtersOpen ? '1' : '0'); } catch { /* ignore */ }
     const panel = document.querySelector('#filter-panel');
     if (panel) panel.hidden = !state.filtersOpen;
     event.currentTarget.classList.toggle('active', state.filtersOpen);
@@ -938,7 +970,7 @@ function renderLiterature(message = '') {
       const tag = remove.dataset.removeTag;
       state.customTags = state.customTags.filter(item => item !== tag);
       if (state.activeCustomTag === tag) state.activeCustomTag = null;
-      localStorage.setItem('hana-research-custom-tags', JSON.stringify(state.customTags));
+      safeStorage.set('hana-research-custom-tags', JSON.stringify(state.customTags));
       renderLiterature(`已删除自定义主题「${tag}」。`);
       return;
     }
@@ -950,7 +982,7 @@ function renderLiterature(message = '') {
   });
   document.querySelector('#target-project')?.addEventListener('change', event => {
     state.selectedProjectId = event.target.value;
-    localStorage.setItem('hana-research-target-project', state.selectedProjectId);
+    safeStorage.set('hana-research-target-project', state.selectedProjectId);
     renderLiterature();
   });
   bindPaperCardActions();
@@ -1139,7 +1171,7 @@ async function refreshJournalBar(statusText = '') {
     // 其余期刊 → 国内/国外分组（收纳在「全部期刊」下，可折叠）
     const journalGroup = (label, key, list) => {
       if (!list.length) return '';
-      const collapsed = localStorage.getItem(`hana-research-journal-group-${key}`) === '1';
+      const collapsed = safeStorage.get(`hana-research-journal-group-${key}`) === '1';
       return `<details class="journal-group journal-extra-sources" ${collapsed ? '' : 'open'} data-journal-group="${key}"><summary><span class="journal-group-label">${label}</span><span class="journal-group-count">${list.length} 刊</span></summary><div class="journal-sources">${list.map(sourceChip).join('')}</div></details>`;
     };
     const cnExtra = extraVenues.filter(source => source.region === 'cn');
@@ -1177,7 +1209,7 @@ async function refreshJournalBar(statusText = '') {
     }
     bar.querySelectorAll('details.journal-group').forEach(details => {
       details.addEventListener('toggle', () => {
-        localStorage.setItem(`hana-research-journal-group-${details.dataset.journalGroup}`, details.open ? '0' : '1');
+        safeStorage.set(`hana-research-journal-group-${details.dataset.journalGroup}`, details.open ? '0' : '1');
       });
     });
     bar.querySelector('#sync-journals')?.addEventListener('click', syncJournalsNow);
@@ -1966,7 +1998,7 @@ function renderCustomTagModal() {
       return;
     }
     state.customTags.push(tag);
-    localStorage.setItem('hana-research-custom-tags', JSON.stringify(state.customTags));
+    safeStorage.set('hana-research-custom-tags', JSON.stringify(state.customTags));
     closeModalLayer();
     renderLiterature(`已添加自定义主题「${tag}」，点击标签即可按关键词筛选。`);
   });
@@ -1978,14 +2010,14 @@ const TAG_COLORS = ['#8bb8e8', '#f0c94f', '#e88b8b', '#8be0b8', '#c98be8', '#e8a
 
 function loadTagColors() {
   try {
-    return JSON.parse(localStorage.getItem('hana-research-tag-colors') || '{}');
+    return JSON.parse(safeStorage.get('hana-research-tag-colors') || '{}');
   } catch {
     return {};
   }
 }
 
 function saveTagColors(colors) {
-  localStorage.setItem('hana-research-tag-colors', JSON.stringify(colors));
+  safeStorage.set('hana-research-tag-colors', JSON.stringify(colors));
 }
 
 async function renderTagManagerModal() {
@@ -2939,7 +2971,7 @@ function renderProjects(message = '') {
     });
     if (!action.ok) return;
     state.selectedProjectId = action.value.project.id;
-    localStorage.setItem('hana-research-target-project', action.value.project.id);
+    safeStorage.set('hana-research-target-project', action.value.project.id);
     renderProjects(`已创建“${title}”，现在可以从文献中心一键导入 PDF。`);
   });
   document.querySelectorAll('[data-project-id]').forEach(card => {
@@ -2957,9 +2989,9 @@ function renderProjects(message = '') {
   // v13：从阅读器返回 → 自动重开原项目抽屉（恢复项目详情/文献列表）
   let openedFromReturn = false;
   try {
-    const returnProjectId = sessionStorage.getItem('hana-return-project');
+    const returnProjectId = safeStorage.sessionGet('hana-return-project');
     if (returnProjectId) {
-      sessionStorage.removeItem('hana-return-project');
+      safeStorage.sessionRemove('hana-return-project');
       openedFromReturn = true;
       const target = state.projects.find(project => project.id === returnProjectId);
       if (target) {
@@ -3216,7 +3248,7 @@ function gapTopFor(ctx) {
 }
 
 function nextStepCollapsedKey(projectId) { return `hana-nextstep-${projectId}`; }
-function isNextStepCollapsed(projectId) { try { return localStorage.getItem(nextStepCollapsedKey(projectId)) === '1'; } catch { return false; } }
+function isNextStepCollapsed(projectId) { try { return safeStorage.get(nextStepCollapsedKey(projectId)) === '1'; } catch { return false; } }
 
 function renderNextStepCard(ctx) {
   const { project, papers, stats } = ctx;
@@ -3266,8 +3298,8 @@ function renderProjectSnapshot(ctx) {
 // ── 研究副驾驶：≤3 条可执行建议（真实数据驱动） ──
 
 function copilotDismissKey(projectId, id) { return `hana-copilot-dismiss-${projectId}_${id}`; }
-function isCopilotDismissed(projectId, id) { try { return localStorage.getItem(copilotDismissKey(projectId, id)) === '1'; } catch { return false; } }
-function dismissCopilot(projectId, id) { try { localStorage.setItem(copilotDismissKey(projectId, id), '1'); } catch { /* ignore */ } }
+function isCopilotDismissed(projectId, id) { try { return safeStorage.get(copilotDismissKey(projectId, id)) === '1'; } catch { return false; } }
+function dismissCopilot(projectId, id) { try { safeStorage.set(copilotDismissKey(projectId, id), '1'); } catch { /* ignore */ } }
 
 function buildCopilotSuggestions(ctx) {
   const { project, stats } = ctx;
@@ -3410,7 +3442,7 @@ function switchDrawerTab(panel, tab) {
   panel.querySelectorAll('[data-drawer-tabpanel]').forEach(section => {
     section.hidden = section.dataset.drawerTabpanel !== tab;
   });
-  try { sessionStorage.setItem('hana-drawer-tab', tab); } catch { /* ignore */ }
+  try { safeStorage.sessionSet('hana-drawer-tab', tab); } catch { /* ignore */ }
 }
 
 function screeningOptions(selected) {
@@ -3419,7 +3451,7 @@ function screeningOptions(selected) {
 
 function dualReviewerStorageKey(projectId) { return `hana-dual-screening-reviewer-${projectId}`; }
 function activeDualReviewer(projectId) {
-  try { return localStorage.getItem(dualReviewerStorageKey(projectId)) === 'b' ? 'b' : 'a'; } catch { return 'a'; }
+  try { return safeStorage.get(dualReviewerStorageKey(projectId)) === 'b' ? 'b' : 'a'; } catch { return 'a'; }
 }
 
 function kappaLabel(value) {
@@ -4037,7 +4069,7 @@ function bindDrawer(panel, ctx) {
   panel.querySelector('[data-next-toggle]')?.addEventListener('click', () => {
     const willCollapse = !nextCard.classList.contains('collapsed');
     nextCard.classList.toggle('collapsed', willCollapse);
-    try { localStorage.setItem(nextStepCollapsedKey(projectId), willCollapse ? '1' : '0'); } catch { /* ignore */ }
+    try { safeStorage.set(nextStepCollapsedKey(projectId), willCollapse ? '1' : '0'); } catch { /* ignore */ }
   });
   panel.querySelectorAll('[data-next-primary]').forEach(btn => btn.addEventListener('click', () => {
     const type = btn.dataset.action;
@@ -4082,7 +4114,7 @@ function bindDrawer(panel, ctx) {
   // 研究闭环
   panel.querySelectorAll('[data-pipe-target]').forEach(btn => btn.addEventListener('click', () => {
     const target = btn.dataset.pipeTarget;
-    if (target === 'search') { try { sessionStorage.setItem('hana-drawer-tab', 'evidence'); } catch { /* ignore */ } window.location.href = '/ui/hana-research/literature'; return; }
+    if (target === 'search') { try { safeStorage.sessionSet('hana-drawer-tab', 'evidence'); } catch { /* ignore */ } window.location.href = '/ui/hana-research/literature'; return; }
     if (target === 'relations') { switchDrawerTab(panel, 'evidence'); renderRelationModal(projectId, papers[0]?.id || '', papers); return; }
     switchDrawerTab(panel, target === 'tasks' ? 'tasks' : target === 'evidence' ? 'evidence' : 'overview');
   }));
@@ -4106,7 +4138,7 @@ function bindDrawer(panel, ctx) {
   panel.querySelectorAll('#screening-criteria, [data-screening-criteria]').forEach(button => button.addEventListener('click', () => renderScreeningCriteriaModal(ctx)));
   panel.querySelectorAll('[data-dual-config]').forEach(button => button.addEventListener('click', () => renderDualScreeningConfigModal(ctx)));
   panel.querySelectorAll('[data-dual-reviewer]').forEach(button => button.addEventListener('click', async () => {
-    try { localStorage.setItem(dualReviewerStorageKey(projectId), button.dataset.dualReviewer); } catch { /* ignore */ }
+    try { safeStorage.set(dualReviewerStorageKey(projectId), button.dataset.dualReviewer); } catch { /* ignore */ }
     await openProjectDrawer(projectId);
   }));
   panel.querySelectorAll('[data-dual-conflicts]').forEach(button => button.addEventListener('click', () => renderDualConflictQueue(ctx)));
@@ -4390,9 +4422,9 @@ async function openProjectDrawer(projectId) {
     window.requestAnimationFrame(() => drawer.classList.add('ready'));
     // 从阅读器返回：若要求打开证据矩阵则直接弹出（阅读 → 证据闭环）
     try {
-      const openEvidence = sessionStorage.getItem('hana-open-evidence');
+      const openEvidence = safeStorage.sessionGet('hana-open-evidence');
       if (openEvidence === projectId) {
-        sessionStorage.removeItem('hana-open-evidence');
+        safeStorage.sessionRemove('hana-open-evidence');
         renderEvidenceMatrixModal(projectId, data.project.title);
       }
     } catch { /* ignore */ }
@@ -4416,8 +4448,8 @@ async function openProjectDrawer(projectId) {
 /** 阅读器返回时记录的页签提示（sessionStorage，一次性）。 */
 function hanaReturnedTab() {
   try {
-    const tab = sessionStorage.getItem('hana-drawer-tab');
-    if (['overview', 'evidence', 'tasks'].includes(tab)) { sessionStorage.removeItem('hana-drawer-tab'); return tab; }
+    const tab = safeStorage.sessionGet('hana-drawer-tab');
+    if (['overview', 'evidence', 'tasks'].includes(tab)) { safeStorage.sessionRemove('hana-drawer-tab'); return tab; }
   } catch { /* ignore */ }
   return null;
 }
@@ -4426,9 +4458,9 @@ function hanaReturnedTab() {
 function readFocusPaperHint(projectId) {
   try {
     const key = `hana-focus-paper-${projectId}`;
-    const raw = sessionStorage.getItem(key);
+    const raw = safeStorage.sessionGet(key);
     if (!raw) return null;
-    sessionStorage.removeItem(key);
+    safeStorage.sessionRemove(key);
     return raw;
   } catch { return null; }
 }
@@ -4795,7 +4827,7 @@ function renderPdfReader() {
     const backProjectId = reader.projectId;
     reader.pdf?.destroy?.();
     state.reader = null;
-    localStorage.removeItem('hana-research-reader-context');
+    safeStorage.remove('hana-research-reader-context');
     researchChannel?.postMessage({ type: 'reader-closed', projectId: backProjectId });
     await loadProjects();
     openProjectDrawer(backProjectId);
@@ -5951,7 +5983,7 @@ function publishReaderContext(type = 'reader-context') {
     paperTitle: reader.data.paper.title,
     projectTitle: reader.data.project.title,
   };
-  localStorage.setItem('hana-research-reader-context', JSON.stringify(payload));
+  safeStorage.set('hana-research-reader-context', JSON.stringify(payload));
   researchChannel?.postMessage(payload);
 }
 
