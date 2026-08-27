@@ -247,7 +247,9 @@ test('project detail replaces the list at the same Harness content level and ret
   assert.equal(drawer.hidden, false);
   assert.equal(window.document.querySelector('#project-list-view').hidden, true);
   assert.equal(window.document.querySelector('.native-page-head').hidden, true);
-  assert.ok(window.document.querySelector('.project-context'));
+  assert.equal(window.document.querySelector('.project-context'), null, 'repeated project context rail is removed');
+  assert.ok(window.document.querySelector('.evidence-method-hub'), 'optional research methods are explained in one hub');
+  assert.equal(window.document.querySelectorAll('[data-evidence-method][open]').length, 0, 'complex research workbenches start collapsed');
   window.document.querySelector('.drawer-close').click();
   assert.equal(drawer.hidden, true);
   assert.equal(window.document.querySelector('#project-list-view').hidden, false);
@@ -312,7 +314,9 @@ test('project navigation stays focused and task/note writes update the drawer in
   const panel = window.document.querySelector('#drawer-panel');
   assert.equal(panel.querySelectorAll('.project-snapshot .snapshot-card').length, 2);
   assert.ok(panel.querySelector('.project-more'));
-  assert.ok(panel.querySelector('.project-context'));
+  assert.equal(panel.querySelector('.project-context'), null, 'detail view uses the full content width');
+  assert.ok(panel.querySelector('[data-project-agent]'), 'agent handoff remains available from the project menu');
+  assert.equal(panel.querySelector('.drawer-paper-workflow')?.open, false, 'per-paper screening and coding stay collapsed until requested');
   const taskNoteBadge = panel.querySelector('[data-drawer-tab="tasks"] .tab-count');
   assert.equal(taskNoteBadge.textContent, '2', 'combined tab counts both tasks and project notes');
   assert.match(taskNoteBadge.title, /1 个待办任务，1 条项目笔记/);

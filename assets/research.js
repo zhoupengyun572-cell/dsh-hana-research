@@ -3499,6 +3499,36 @@ function renderCodingWorkbench(coding) {
   </section>`;
 }
 
+function renderEvidenceMethodHub(ctx) {
+  const screening = ctx.screening || {};
+  const coding = ctx.coding || {};
+  const quality = ctx.quality || {};
+  const screeningPending = Number(screening.titleAbstract?.pending || 0) + Number(screening.fullText?.pending || 0);
+  const codingFields = coding.fields?.length || 0;
+  const qualitySummary = quality.summary || {};
+  const qualityProgress = `${qualitySummary.complete || 0} / ${qualitySummary.total || 0}`;
+  return `<section class="evidence-method-hub" aria-labelledby="evidence-method-title">
+    <header class="evidence-method-intro">
+      <div><span class="composer-kicker">Optional research workflow</span><h3 id="evidence-method-title">需要做系统综述时，再使用这些工具</h3></div>
+      <p>它们分别解决“纳入哪些研究、提取哪些数据、证据是否可信”。如果这里只用于收藏、阅读和记笔记，可以直接跳到下方文献列表。</p>
+    </header>
+    <div class="evidence-method-list">
+      <details class="evidence-method" data-evidence-method="screening">
+        <summary><span class="evidence-method-index">01</span><span class="evidence-method-copy"><b>筛选文献</b><small>按纳入与排除标准，决定哪些研究进入综述。</small></span><em>${screeningPending ? `${screeningPending} 项待判断` : '暂无待处理'}</em></summary>
+        <div class="evidence-method-body">${renderScreeningWorkbench(screening)}</div>
+      </details>
+      <details class="evidence-method" data-evidence-method="coding">
+        <summary><span class="evidence-method-index">02</span><span class="evidence-method-copy"><b>提取研究数据</b><small>用统一字段记录样本、方法和结果，方便跨文献比较。</small></span><em>${codingFields ? `${codingFields} 个字段` : '尚未设置'}</em></summary>
+        <div class="evidence-method-body">${renderCodingWorkbench(coding)}</div>
+      </details>
+      <details class="evidence-method" data-evidence-method="quality">
+        <summary><span class="evidence-method-index">03</span><span class="evidence-method-copy"><b>评定证据质量</b><small>完成纳入后，判断偏倚风险和结论可信程度。</small></span><em>${quality ? `${qualityProgress} 已完成` : '尚未开始'}</em></summary>
+        <div class="evidence-method-body">${renderQualityWorkbench(ctx.quality) || '<p class="drawer-empty-hint">当前项目尚未启用质量评定。</p>'}</div>
+      </details>
+    </div>
+  </section>`;
+}
+
 function evidenceValuePresent(value) {
   return value !== null && value !== undefined && value !== '' && (!Array.isArray(value) || value.length > 0);
 }
@@ -3656,13 +3686,26 @@ function drawerPaperCardHtml(paper, coding, screening) {
   const effectiveRetrieval = explicitRetrieval ? paper.retrievalStatus : (paper.fullTextDecision !== 'pending' ? 'retrieved' : (['include', 'maybe'].includes(ta) ? (paper.attachmentId ? 'retrieved' : 'sought') : 'not_sought'));
   const showRetrieval = explicitRetrieval || ['include', 'maybe'].includes(ta) || ft !== 'pending';
   const retrievalMarkup = showRetrieval ? `<div class="paper-retrieval-row ${escapeAttr(effectiveRetrieval)}"><span>全文获取</span><select data-retrieval-set="${escapeAttr(paper.id)}" aria-label="全文获取状态"><option value="auto" ${paper.retrievalStatus === 'auto' ? 'selected' : ''}>自动 · ${effectiveRetrieval === 'retrieved' ? '已获取' : effectiveRetrieval === 'sought' ? '获取中' : '未进入'}</option><option value="sought" ${paper.retrievalStatus === 'sought' ? 'selected' : ''}>正在获取</option><option value="retrieved" ${paper.retrievalStatus === 'retrieved' ? 'selected' : ''}>已获取全文</option><option value="not_retrieved" ${paper.retrievalStatus === 'not_retrieved' ? 'selected' : ''}>无法获取</option></select>${paper.retrievalReason ? `<button type="button" data-retrieval-reason="${escapeAttr(paper.id)}" title="${escapeAttr(paper.retrievalReason)}">${escapeHtml(paper.retrievalReason.slice(0, 36))}${paper.retrievalReason.length > 36 ? '…' : ''}</button>` : ''}</div>` : '';
+  const screeningLabel = dualEnabled
+    ? ({ conflict: '筛选冲突', resolved: '已仲裁', agreement: '双方一致', in_progress: '筛选中', unreviewed: '待筛选' })[dualStatus] || '待筛选'
+    : SCREENING_DECISION_LABELS[ta] || '待筛选';
+  const roleLabel = paper.role ? PAPER_ROLE_LABELS[paper.role] : '未标记角色';
   return `<article class="drawer-paper" data-paper-id="${escapeAttr(paper.id)}" data-drawer-role="${escapeAttr(paper.role || '')}" data-screening-decision="${escapeAttr(dualEnabled ? dualStatus : ta)}">
-    ${dualEnabled ? '' : `<label class="screening-paper-check" title="选择用于批量筛选"><input type="checkbox" data-screening-select-paper="${escapeAttr(paper.id)}"><span>批量选择</span></label>`}<span>${escapeHtml(paper.venue)}${paper.year ? ` · ${escapeHtml(paper.year)}` : ''}</span><strong>${escapeHtml(paper.title)}</strong>
-    <div class="drawer-paper-actions"><em>${paper.attachmentId ? 'PDF 已就绪' : '仅元数据'}</em><span class="drawer-paper-buttons">${paper.attachmentId ? `<button class="reader-open" data-open-reader="${escapeAttr(paper.attachmentId)}">打开阅读器</button><button class="reader-open translate-doc" data-translate-doc="${escapeAttr(paper.attachmentId)}" data-translate-title="${escapeAttr(paper.title)}">翻译全文</button><button class="trans-toggle" data-translations-toggle="${escapeAttr(paper.attachmentId)}" title="展开/收起译文子文档">译文 <b>${state.translationCounts[paper.attachmentId] || 0}</b><i></i></button>` : ''}<button class="reader-open" data-relation-add="${escapeAttr(paper.id)}" title="标注该文献与其他文献的关系（支持/反驳/被引用）">关系</button></span></div>
-    ${screeningMarkup}
-    ${retrievalMarkup}
-    ${paperCodingHtml(paper, coding)}
-    <div class="drawer-paper-rolebar"><span class="paper-role ${paper.role ? escapeAttr(paper.role) : 'none'}">${paper.role ? PAPER_ROLE_LABELS[paper.role] : '未标记角色'}</span><select class="paper-role-select" data-role-set="${escapeAttr(paper.id)}" title="标记该文献在项目中的角色">${[['', '未标记'], ['core', '核心文献'], ['background', '背景'], ['method', '方法参考'], ['compare', '结果对比']].map(([value, label]) => `<option value="${value}" ${paper.role === value ? 'selected' : ''}>${label}</option>`).join('')}</select></div><div class="paper-translations" data-translations-panel="${escapeAttr(paper.attachmentId || '')}" hidden></div>
+    <div class="drawer-paper-main">
+      ${dualEnabled ? '' : `<label class="screening-paper-check" title="选择用于批量筛选"><input type="checkbox" data-screening-select-paper="${escapeAttr(paper.id)}"><span>批量选择</span></label>`}
+      <div class="drawer-paper-copy"><span>${escapeHtml(paper.venue)}${paper.year ? ` · ${escapeHtml(paper.year)}` : ''}</span><strong>${escapeHtml(paper.title)}</strong><div class="drawer-paper-state"><em>${paper.attachmentId ? 'PDF 已就绪' : '仅元数据'}</em><i>${escapeHtml(roleLabel)}</i><i>${escapeHtml(screeningLabel)}</i></div></div>
+      <div class="drawer-paper-quick">${paper.attachmentId ? `<button class="button primary reader-open" data-open-reader="${escapeAttr(paper.attachmentId)}">阅读 PDF</button>` : ''}<details class="paper-action-menu"><summary>更多</summary><div>${paper.attachmentId ? `<button class="reader-open translate-doc" data-translate-doc="${escapeAttr(paper.attachmentId)}" data-translate-title="${escapeAttr(paper.title)}">翻译全文</button><button class="trans-toggle" data-translations-toggle="${escapeAttr(paper.attachmentId)}" title="展开/收起译文子文档">查看译文 · ${state.translationCounts[paper.attachmentId] || 0}</button>` : ''}<button class="reader-open" data-relation-add="${escapeAttr(paper.id)}">建立文献关系</button></div></details></div>
+    </div>
+    <details class="drawer-paper-workflow">
+      <summary><span>整理这篇文献</span><small>筛选结论、项目角色与研究编码</small></summary>
+      <div class="drawer-paper-workflow-body">
+        ${screeningMarkup}
+        ${retrievalMarkup}
+        <div class="drawer-paper-rolebar"><span class="paper-role ${paper.role ? escapeAttr(paper.role) : 'none'}">${escapeHtml(roleLabel)}</span><label><span>在项目中的用途</span><select class="paper-role-select" data-role-set="${escapeAttr(paper.id)}">${[['', '未标记'], ['core', '核心文献'], ['background', '背景'], ['method', '方法参考'], ['compare', '结果对比']].map(([value, label]) => `<option value="${value}" ${paper.role === value ? 'selected' : ''}>${label}</option>`).join('')}</select></label></div>
+        ${paperCodingHtml(paper, coding)}
+      </div>
+    </details>
+    <div class="paper-translations" data-translations-panel="${escapeAttr(paper.attachmentId || '')}" hidden></div>
   </article>`;
 }
 
@@ -4002,7 +4045,6 @@ function renderDrawer(ctx) {
   const noteCountEl = stats.tasks.todo ? `<span class="tab-count attn" title="${stats.tasks.todo} 个待办任务，${stats.evidence.notes || 0} 条项目笔记">${taskAndNoteCount}</span>` : `<span class="tab-count" title="${stats.tasks.total || 0} 个任务，${stats.evidence.notes || 0} 条项目笔记">${taskAndNoteCount}</span>`;
   const statusLabel = ({ active: '进行中', done: '已完成', archived: '已归档' })[project.status] || '进行中';
   const projectCopy = project.description || (project.projectType ? `${project.projectType}项目 · 围绕当前研究问题持续整理文献、证据与研究判断。` : '围绕当前研究问题持续整理文献、证据与研究判断。');
-  const recent = project.updatedAt ? String(project.updatedAt).slice(0, 10) : '暂无记录';
   return `<article class="native-project-detail">
   <header class="project-detail-head">
     <div class="detail-breadcrumb"><button type="button" class="drawer-close">← 项目库</button><span>/</span><span>${escapeHtml(project.title)}</span></div>
@@ -4015,6 +4057,7 @@ function renderDrawer(ctx) {
         <button type="button" id="evidence-matrix">证据矩阵</button>
         <button type="button" id="quality-workbench">质量评定 / GRADE</button>
         <button type="button" id="export-notes">导出笔记</button>
+        <button type="button" class="agent-handoff-button" data-project-agent>交给 Agent</button>
         <label class="project-more-upload">上传 PDF<input type="file" accept="application/pdf,.pdf" data-upload-pdf hidden></label>
         <div class="project-more-settings"><label>项目类型<select data-project-type>${['', '综述', '实证研究', '元分析', '量表开发', '课程作业'].map(type => `<option value="${escapeAttr(type)}" ${project.projectType === type ? 'selected' : ''}>${escapeHtml(type || '未分类')}</option>`).join('')}</select></label><label>项目状态<select data-project-status>${[['active', '进行中'], ['done', '已完成'], ['archived', '已归档']].map(([value, label]) => `<option value="${value}" ${project.status === value ? 'selected' : ''}>${label}</option>`).join('')}</select></label></div>
       </div>
@@ -4034,23 +4077,18 @@ function renderDrawer(ctx) {
     <details class="drawer-disclosure cockpit-disclosure"><summary><span>研究诊断</span><b>副驾驶建议与研究闭环</b></summary><div class="drawer-disclosure-body">${renderCopilot(ctx)}${renderResearchPipeline(ctx)}</div></details>
   </section>
   <section class="drawer-tab-panel" data-drawer-tabpanel="evidence">
-    ${renderScreeningWorkbench(ctx.screening)}
-    ${renderCodingWorkbench(ctx.coding)}
-    ${renderQualityWorkbench(ctx.quality)}
-    <div class="drawer-role-row" id="drawer-roles"><button class="chip active" data-drawer-role-filter="全部">全部角色</button>${[['core', '核心文献'], ['background', '背景'], ['method', '方法参考'], ['compare', '结果对比'], ['', '未标记']].map(([value, label]) => `<button class="chip" data-drawer-role-filter="${escapeAttr(value)}">${label}</button>`).join('')}</div>
-    <div class="drawer-papers">${papers.map(paper => drawerPaperCardHtml(paper, ctx.coding, ctx.screening)).join('')}</div>
+    ${renderEvidenceMethodHub(ctx)}
+    <section class="project-library-section" aria-labelledby="project-library-title">
+      <header class="project-library-head"><div><span class="composer-kicker">Project library</span><h3 id="project-library-title">项目文献</h3><p>先阅读与整理；需要筛选、编码时再展开单篇文献。</p></div><strong>${papers.length}<small> 篇</small></strong></header>
+      <div class="drawer-role-row" id="drawer-roles"><button class="chip active" data-drawer-role-filter="全部">全部</button>${[['core', '核心文献'], ['background', '背景'], ['method', '方法参考'], ['compare', '结果对比'], ['', '未标记']].map(([value, label]) => `<button class="chip" data-drawer-role-filter="${escapeAttr(value)}">${label}</button>`).join('')}</div>
+      <div class="drawer-papers">${papers.map(paper => drawerPaperCardHtml(paper, ctx.coding, ctx.screening)).join('') || '<p class="drawer-empty-hint">项目中还没有文献。可从文献中心保存，或在“更多”中上传 PDF。</p>'}</div>
+    </section>
     ${drawerRelationsHtml(projectId, relations, papers)}
   </section>
   <section class="drawer-tab-panel" data-drawer-tabpanel="tasks">
     ${renderProjectTaskPanel(projectId, project.title, notes, papers)}
     ${drawerNotesHtml(projectId, notes, papers)}
-  </section></main>
-  <aside class="project-context" aria-label="项目上下文">
-    <h3>项目上下文</h3>
-    <dl><div><dt>文献</dt><dd>${stats.papers.total} 篇</dd></div><div><dt>待读</dt><dd>${Math.max(0, stats.papers.total - stats.papers.read)} 篇</dd></div><div><dt>待办任务</dt><dd>${stats.tasks.todo || 0} 项</dd></div><div><dt>项目笔记</dt><dd>${stats.evidence.notes || 0} 条</dd></div><div><dt>最后更新</dt><dd>${escapeHtml(recent)}</dd></div></dl>
-    <button type="button" class="button agent-handoff-button context-agent" data-project-agent>◆ 交给 Agent</button>
-    <p>Agent 会读取当前项目上下文；写入操作仍需你确认。</p>
-  </aside></div></article>`;
+  </section></main></div></article>`;
 }
 
 function bindDrawer(panel, ctx) {
@@ -4064,6 +4102,11 @@ function bindDrawer(panel, ctx) {
   });
   // 页签切换
   panel.querySelectorAll('[data-drawer-tab]').forEach(btn => btn.addEventListener('click', () => switchDrawerTab(panel, btn.dataset.drawerTab)));
+  // 专业研究工具采用手风琴式渐进披露，避免三个复杂工作台同时堆叠。
+  panel.querySelectorAll('[data-evidence-method]').forEach(detail => detail.addEventListener('toggle', () => {
+    if (!detail.open) return;
+    panel.querySelectorAll('[data-evidence-method]').forEach(other => { if (other !== detail) other.open = false; });
+  }));
   // 下一步卡折叠
   const nextCard = panel.querySelector('[data-next-step]');
   panel.querySelector('[data-next-toggle]')?.addEventListener('click', () => {
