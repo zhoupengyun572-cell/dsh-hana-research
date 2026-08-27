@@ -1,0 +1,217 @@
+- main [ref=e2]:
+  - generic [ref=e3]:
+    - generic [ref=e4]:
+      - generic [ref=e5]: 项目库
+      - generic [ref=e11]:
+        - button "＋ 新建项目" [ref=e12] [cursor=pointer]
+        - button "◆ 交给 Agent" [ref=e13] [cursor=pointer]
+    - main [ref=e14]:
+      - generic [ref=e15]:
+        - generic [ref=e16]:
+          - heading "§每个研究问题，都有自己的证据空间。" [level=1] [ref=e17]
+          - paragraph [ref=e18]: 直接上传 PDF，或接收文献中心下载的开放文献；在项目中阅读、勾画并持续积累逐页笔记。
+        - generic [ref=e19]:
+          - text: 研究工作台
+          - strong [ref=e20]: 8月19日
+          - text: 本地优先 · 可追溯
+      - textbox [ref=e23]:
+        - /placeholder: 检索项目或研究问题
+      - generic [ref=e24]:
+        - heading "§ 研究项目" [level=2] [ref=e25]
+        - generic [ref=e26]: 2 个进行中的项目 · SQLite 本地存储
+      - generic [ref=e27]:
+        - button "打开项目「青少年情绪应对」" [active] [ref=e28] [cursor=pointer]:
+          - heading "青少年情绪应对" [level=3] [ref=e30]
+          - paragraph [ref=e31]: 关键事件访谈、情绪调节与情境化测评材料。
+          - generic [ref=e32]:
+            - generic [ref=e33]:
+              - strong [ref=e34]: "4"
+              - text: 篇文献
+            - generic [ref=e35]:
+              - strong [ref=e36]: "2"
+              - text: 份 PDF
+            - generic [ref=e37]: 0 天前更新
+          - text: 打开项目 →
+        - button "打开项目「Chat-SJT 开发」" [ref=e38] [cursor=pointer]:
+          - heading "Chat-SJT 开发" [level=3] [ref=e40]
+          - paragraph [ref=e41]: 情境判断测验的证据、条目版本与效度研究。
+          - generic [ref=e42]:
+            - generic [ref=e43]:
+              - strong [ref=e44]: "0"
+              - text: 篇文献
+            - generic [ref=e45]:
+              - strong [ref=e46]: "0"
+              - text: 份 PDF
+            - generic [ref=e47]: 3 天前更新
+          - text: 打开项目 →
+        - button "建立新的研究空间 文献、PDF 与笔记将在这里汇合" [ref=e48] [cursor=pointer]:
+          - generic [ref=e49]:
+            - generic [ref=e50]: 建立新的研究空间
+            - text: 文献、PDF 与笔记将在这里汇合
+      - generic [ref=e52]:
+        - button "关闭" [ref=e53] [cursor=pointer]: ×
+        - generic [ref=e54]: Evidence collection
+        - heading "§ 青少年情绪应对" [level=2] [ref=e55]
+        - generic [ref=e56]:
+          - text: 类型
+          - combobox [ref=e57]:
+            - option "未分类" [selected]
+            - option "综述"
+            - option "实证研究"
+            - option "元分析"
+            - option "量表开发"
+            - option "课程作业"
+          - text: · 状态
+          - combobox [ref=e58]:
+            - option "进行中" [selected]
+            - option "已完成"
+            - option "已归档"
+        - generic [ref=e59]: 文献 4 篇 · 已读 0 · 在读 1 · 笔记 3 条 · 最近活动 2026-08-18
+        - paragraph [ref=e60]: 4 篇文献已进入项目，其中 2 份 PDF 可以直接阅读与批注。
+        - generic [ref=e65] [cursor=pointer]:
+          - generic [ref=e66]: 上传 PDF 到项目
+          - generic [ref=e67]: 最大 40 MB · 本地保存
+        - generic [ref=e68]:
+          - button "生成综述草稿" [ref=e69] [cursor=pointer]
+          - button "证据矩阵" [ref=e70] [cursor=pointer]
+          - button "导出笔记" [ref=e71] [cursor=pointer]
+        - generic [ref=e72]:
+          - button "全部角色" [ref=e73] [cursor=pointer]
+          - button "核心文献" [ref=e74] [cursor=pointer]
+          - button "背景" [ref=e75] [cursor=pointer]
+          - button "方法参考" [ref=e76] [cursor=pointer]
+          - button "结果对比" [ref=e77] [cursor=pointer]
+          - button "未标记" [ref=e78] [cursor=pointer]
+        - generic [ref=e79]:
+          - article [ref=e80]:
+            - generic [ref=e81]: 心理科学进展 · 2026
+            - strong [ref=e82]: 企业不当行为何以产生溢出效应?基于归因认知过程的解释
+            - generic [ref=e83]:
+              - emphasis [ref=e84]: PDF 已就绪
+              - generic [ref=e85]:
+                - button "打开阅读器" [ref=e86] [cursor=pointer]
+                - button "翻译全文" [ref=e87] [cursor=pointer]
+                - button "译文 0" [ref=e88] [cursor=pointer]:
+                  - text: 译文
+                  - generic [ref=e89]: "0"
+                - button "关系" [ref=e91] [cursor=pointer]
+            - generic [ref=e92]:
+              - generic [ref=e93]: 未标记角色
+              - combobox "标记该文献在项目中的角色" [ref=e94] [cursor=pointer]:
+                - option "未标记" [selected]
+                - option "核心文献"
+                - option "背景"
+                - option "方法参考"
+                - option "结果对比"
+          - article [ref=e96]:
+            - generic [ref=e97]: 心理科学进展 · 2026
+            - strong [ref=e98]: 执中致和：中庸思维与心理健康关系的三水平元分析
+            - generic [ref=e99]:
+              - emphasis [ref=e100]: 仅元数据
+              - button "关系" [ref=e102] [cursor=pointer]
+            - generic [ref=e103]:
+              - generic [ref=e104]: 未标记角色
+              - combobox "标记该文献在项目中的角色" [ref=e105] [cursor=pointer]:
+                - option "未标记" [selected]
+                - option "核心文献"
+                - option "背景"
+                - option "方法参考"
+                - option "结果对比"
+          - article [ref=e107]:
+            - generic [ref=e108]: 心理科学进展 · 2026
+            - strong [ref=e109]: 领导对员工−生成式人工智能建议的反应机制：基于社会比较视角多层次研究
+            - generic [ref=e110]:
+              - emphasis [ref=e111]: 仅元数据
+              - button "关系" [ref=e113] [cursor=pointer]
+            - generic [ref=e114]:
+              - generic [ref=e115]: 未标记角色
+              - combobox "标记该文献在项目中的角色" [ref=e116] [cursor=pointer]:
+                - option "未标记" [selected]
+                - option "核心文献"
+                - option "背景"
+                - option "方法参考"
+                - option "结果对比"
+          - article [ref=e118]:
+            - generic [ref=e119]: 心理科学进展 · 2026
+            - strong [ref=e120]: 资源稀缺对成年子女孝心消费行为的影响
+            - generic [ref=e121]:
+              - emphasis [ref=e122]: PDF 已就绪
+              - generic [ref=e123]:
+                - button "打开阅读器" [ref=e124] [cursor=pointer]
+                - button "翻译全文" [ref=e125] [cursor=pointer]
+                - button "译文 0" [ref=e126] [cursor=pointer]:
+                  - text: 译文
+                  - generic [ref=e127]: "0"
+                - button "关系" [ref=e129] [cursor=pointer]
+            - generic [ref=e130]:
+              - generic [ref=e131]: 核心文献
+              - combobox "标记该文献在项目中的角色" [ref=e132] [cursor=pointer]:
+                - option "未标记"
+                - option "核心文献" [selected]
+                - option "背景"
+                - option "方法参考"
+                - option "结果对比"
+        - generic [ref=e134]:
+          - heading "论证链" [level=3] [ref=e135]
+          - paragraph [ref=e136]: 尚未标注文献关系。点击文献卡上的「关系」建立论证链（A 支持/反驳/被 B 引用）。
+        - generic [ref=e137]:
+          - generic [ref=e138]:
+            - heading "研究任务 0 待推进" [level=3] [ref=e139]:
+              - text: 研究任务
+              - generic [ref=e140]: 0 待推进
+            - button "◆ 交给 Agent" [ref=e141] [cursor=pointer]
+          - group "任务筛选" [ref=e142]:
+            - button "待推进 0" [ref=e143] [cursor=pointer]
+            - button "全部 0" [ref=e144] [cursor=pointer]
+            - button "已完成 0" [ref=e145] [cursor=pointer]
+          - paragraph [ref=e147]: 还没有待办。把下一步研究动作写下来，Agent 也会在同一份任务清单上协作。
+          - generic [ref=e148]:
+            - generic [ref=e149]: 新增研究任务
+            - textbox "新增研究任务" [ref=e150]:
+              - /placeholder: 下一步要推进什么？例如：核对 3 篇核心文献的样本量
+            - generic [ref=e151]:
+              - combobox "优先级" [ref=e152]:
+                - option "高优先级"
+                - option "普通" [selected]
+                - option "低优先级"
+              - textbox "截止日期" [ref=e153]
+              - combobox "关联文献" [ref=e154]:
+                - option "关联文献（可选）" [selected]
+                - option "企业不当行为何以产生溢出效应?基于归因认知过程的解释"
+                - option "执中致和：中庸思维与心理健康关系的三水平元分析"
+                - option "领导对员工−生成式人工智能建议的反应机制：基于社会比较视角多层次"
+                - option "资源稀缺对成年子女孝心消费行为的影响"
+              - button "添加任务" [ref=e155] [cursor=pointer]
+        - generic [ref=e156]:
+          - heading "项目笔记 3 条" [level=3] [ref=e157]:
+            - text: 项目笔记
+            - generic [ref=e158]: 3 条
+          - generic [ref=e159]:
+            - textbox "记录研究思路、发现或评论（可关联另一篇文献作对比）…" [ref=e160]
+            - generic [ref=e161]:
+              - combobox "关联另一篇项目内文献（跨文献对比）" [ref=e162]:
+                - option "关联文献（可选）" [selected]
+                - option "企业不当行为何以产生溢出效应?基于归因认知过程的解释"
+                - option "执中致和：中庸思维与心理健康关系的三水平元分析"
+                - option "领导对员工−生成式人工智能建议的反应机制：基于社会比较视角多层次研究"
+                - option "资源稀缺对成年子女孝心消费行为的影响"
+              - button "保存笔记" [ref=e163] [cursor=pointer]
+          - generic [ref=e164]:
+            - article [ref=e165]:
+              - generic [ref=e166]:
+                - generic [ref=e167]: 资源稀缺对成年子女孝心消费行为的影响 · 第 1 页
+                - generic [ref=e168]: "#关键证据"
+              - paragraph
+              - button "删除" [ref=e169] [cursor=pointer]
+            - article [ref=e170]:
+              - generic [ref=e171]:
+                - generic [ref=e172]: 资源稀缺对成年子女孝心消费行为的影响 · 第 1 页
+                - generic [ref=e173]: "#关键证据"
+              - paragraph
+              - button "删除" [ref=e174] [cursor=pointer]
+            - article [ref=e175]:
+              - generic [ref=e176]:
+                - generic [ref=e177]: 资源稀缺对成年子女孝心消费行为的影响 · 第 1 页
+                - generic [ref=e178]: "#关键证据"
+              - paragraph
+              - button "删除" [ref=e179] [cursor=pointer]

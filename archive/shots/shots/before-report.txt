@@ -1,0 +1,76 @@
+[1280x720-s100] hscroll=YES(1293>1270) menu: within=true under=true rightAligned=true rightGap=28 leftGap=1072 bottomGap=527 textVisible=true items=4 
+[debug] {
+ "iw": 1440,
+ "ih": 900,
+ "scrollingElement": "HTML",
+ "html": {
+  "clientWidth": 1430,
+  "scrollWidth": 1453,
+  "offsetWidth": 1430,
+  "rect": {
+   "l": 0,
+   "r": 1430,
+   "w": 1430
+  }
+ },
+ "body": {
+  "clientWidth": 1430,
+  "scrollWidth": 1453,
+  "offsetWidth": 1430,
+  "rect": {
+   "l": 0,
+   "r": 1430,
+   "w": 1430
+  },
+  "cs": {
+   "overflowX": "auto",
+   "overflowY": "auto",
+   "width": "1430px",
+   "margin": "0px",
+   "padding": "0px",
+   "border": "0px/0px"
+  }
+ },
+ "bodyKids": [
+  {
+   "tag": "main",
+   "id": "research-root",
+   "cls": "",
+   "l": 0,
+   "r": 1430,
+   "w": 1430,
+   "sw": 1453,
+   "ow": 1430,
+   "cw": 1430,
+   "overflowX": "visible",
+   "position": "static",
+   "width": "1430px"
+  },
+  {
+   "tag": "script",
+   "id": "",
+   "cls": "",
+   "l": 0,
+   "r": 0,
+   "w": 0,
+   "sw": 0,
+   "ow": 0,
+   "cw": 0,
+   "overflowX": "visible",
+   "position": "static",
+   "width": "auto"
+  }
+ ],
+ "maxRight": 1430,
+ "maxRightEl": "html.",
+ "atEdge": []
+}
+[1440x900-s100] hscroll=YES(1453>1430) menu: within=true under=true rightAligned=true rightGap=28 leftGap=1232 bottomGap=707 textVisible=true items=4 
+[1920x1080-s100] hscroll=YES(1933>1910) menu: within=true under=true rightAligned=true rightGap=28 leftGap=1712 bottomGap=887 textVisible=true items=4 
+[1536x864-s125] hscroll=YES(1549>1526) menu: within=true under=true rightAligned=true rightGap=28 leftGap=1328 bottomGap=671 textVisible=true items=4 
+[1280x720-s150] hscroll=YES(1293>1270) menu: within=true under=true rightAligned=true rightGap=28 leftGap=1072 bottomGap=527 textVisible=true items=4 
+[1440x900-s125] hscroll=YES(1453>1430) menu: within=true under=true rightAligned=true rightGap=28 leftGap=1232 bottomGap=707 textVisible=true items=4 
+[1024x768-s100] hscroll=YES(1037>1014) menu: within=true under=true rightAligned=true rightGap=28 leftGap=816 bottomGap=575 textVisible=true items=4 
+[900x700-s100-narrow] hscroll=YES(992>890) menu: within=true under=true rightAligned=true rightGap=28 leftGap=692 bottomGap=507 textVisible=true items=4 OFFENDERS: span.paper-authors(992px) span.paper-authors(964px) span.paper-authors(955px) span.paper-authors(924px) span.paper-authors(909px) span.paper-authors(906px) | WIDE: span.paper-authors(w=915,l=77)
+[1440x900-dark] hscroll=YES(1453>1430) menu: within=true under=true rightAligned=true rightGap=28 leftGap=1232 bottomGap=707 textVisible=true items=4 
+[1280x720-dark] hscroll=YES(1293>1270) menu: within=true under=true rightAligned=true rightGap=28 leftGap=1072 bottomGap=527 textVisible=true items=4 

@@ -1,0 +1,50 @@
+- main [ref=e2]:
+  - generic [ref=e3]:
+    - generic [ref=e4]:
+      - generic [ref=e5]: 项目库
+      - generic [ref=e11]:
+        - button "＋ 新建项目" [ref=e12] [cursor=pointer]
+        - button "◆ 交给 Agent" [ref=e13] [cursor=pointer]
+    - main [ref=e14]:
+      - generic [ref=e15]:
+        - generic [ref=e16]:
+          - heading "§每个研究问题，都有自己的证据空间。" [level=1] [ref=e17]
+          - paragraph [ref=e18]: 直接上传 PDF，或接收文献中心下载的开放文献；在项目中阅读、勾画并持续积累逐页笔记。
+        - generic [ref=e19]:
+          - text: 研究工作台
+          - strong [ref=e20]: 8月19日
+          - text: 本地优先 · 可追溯
+      - textbox [ref=e23]:
+        - /placeholder: 检索项目或研究问题
+      - generic [ref=e24]:
+        - heading "§ 研究项目" [level=2] [ref=e25]
+        - generic [ref=e26]: 2 个进行中的项目 · SQLite 本地存储
+      - generic [ref=e27]:
+        - button "打开项目「青少年情绪应对」" [ref=e28] [cursor=pointer]:
+          - heading "青少年情绪应对" [level=3] [ref=e30]
+          - paragraph [ref=e31]: 关键事件访谈、情绪调节与情境化测评材料。
+          - generic [ref=e32]:
+            - generic [ref=e33]:
+              - strong [ref=e34]: "4"
+              - text: 篇文献
+            - generic [ref=e35]:
+              - strong [ref=e36]: "2"
+              - text: 份 PDF
+            - generic [ref=e37]: 0 天前更新
+          - text: 打开项目 →
+        - button "打开项目「Chat-SJT 开发」" [ref=e38] [cursor=pointer]:
+          - heading "Chat-SJT 开发" [level=3] [ref=e40]
+          - paragraph [ref=e41]: 情境判断测验的证据、条目版本与效度研究。
+          - generic [ref=e42]:
+            - generic [ref=e43]:
+              - strong [ref=e44]: "0"
+              - text: 篇文献
+            - generic [ref=e45]:
+              - strong [ref=e46]: "0"
+              - text: 份 PDF
+            - generic [ref=e47]: 3 天前更新
+          - text: 打开项目 →
+        - button "建立新的研究空间 文献、PDF 与笔记将在这里汇合" [ref=e48] [cursor=pointer]:
+          - generic [ref=e49]:
+            - generic [ref=e50]: 建立新的研究空间
+            - text: 文献、PDF 与笔记将在这里汇合

@@ -1,0 +1,1071 @@
+{
+  "base": "http://127.0.0.1:4754",
+  "at": "2026-08-19T13:44:07.655Z",
+  "scenarios": [
+    {
+      "scenario": "1280x720-s100",
+      "width": 1280,
+      "height": 720,
+      "dsf": 1,
+      "theme": "light",
+      "scrollRatio": 0,
+      "overflow": {
+        "hasHScroll": false,
+        "clientWidth": 1270,
+        "scrollWidth": 1270,
+        "offenders": []
+      },
+      "menu": {
+        "opened": {
+          "found": true,
+          "btn": {
+            "left": 1183,
+            "right": 1252,
+            "top": 8,
+            "bottom": 42,
+            "w": 69
+          },
+          "menu": {
+            "left": 1012,
+            "right": 1252,
+            "top": 49,
+            "bottom": 197,
+            "w": 240,
+            "h": 148
+          },
+          "vw": 1280,
+          "vh": 720,
+          "rightGap": 28,
+          "leftGap": 1012,
+          "bottomGap": 523,
+          "underButton": true,
+          "rightAligned": true,
+          "withinViewport": true,
+          "items": [
+            {
+              "text": "标签管理",
+              "inViewport": true,
+              "withinMenu": true,
+              "icon": {
+                "w": 14,
+                "h": 14
+              }
+            },
+            {
+              "text": "翻译设置",
+              "inViewport": true,
+              "withinMenu": true,
+              "icon": {
+                "w": 14,
+                "h": 14
+              }
+            },
+            {
+              "text": "数据导出",
+              "inViewport": true,
+              "withinMenu": true,
+              "icon": {
+                "w": 14,
+                "h": 14
+              }
+            },
+            {
+              "text": "同步设置",
+              "inViewport": true,
+              "withinMenu": true,
+              "icon": {
+                "w": 14,
+                "h": 14
+              }
+            }
+          ],
+          "allTextVisible": true,
+          "allIconsSized": true,
+          "hidden": false,
+          "parentIsBody": true
+        },
+        "closedHidden": true,
+        "shot": "1280x720-s100-open.png"
+      }
+    },
+    {
+      "scenario": "1440x900-s100",
+      "width": 1440,
+      "height": 900,
+      "dsf": 1,
+      "theme": "light",
+      "scrollRatio": 0,
+      "overflow": {
+        "hasHScroll": false,
+        "clientWidth": 1430,
+        "scrollWidth": 1430,
+        "offenders": []
+      },
+      "menu": {
+        "opened": {
+          "found": true,
+          "btn": {
+            "left": 1343,
+            "right": 1412,
+            "top": 8,
+            "bottom": 42,
+            "w": 69
+          },
+          "menu": {
+            "left": 1172,
+            "right": 1412,
+            "top": 50,
+            "bottom": 198,
+            "w": 240,
+            "h": 148
+          },
+          "vw": 1440,
+          "vh": 900,
+          "rightGap": 28,
+          "leftGap": 1172,
+          "bottomGap": 703,
+          "underButton": true,
+          "rightAligned": true,
+          "withinViewport": true,
+          "items": [
+            {
+              "text": "标签管理",
+              "inViewport": true,
+              "withinMenu": true,
+              "icon": {
+                "w": 14,
+                "h": 14
+              }
+            },
+            {
+              "text": "翻译设置",
+              "inViewport": true,
+              "withinMenu": true,
+              "icon": {
+                "w": 14,
+                "h": 14
+              }
+            },
+            {
+              "text": "数据导出",
+              "inViewport": true,
+              "withinMenu": true,
+              "icon": {
+                "w": 14,
+                "h": 14
+              }
+            },
+            {
+              "text": "同步设置",
+              "inViewport": true,
+              "withinMenu": true,
+              "icon": {
+                "w": 14,
+                "h": 14
+              }
+            }
+          ],
+          "allTextVisible": true,
+          "allIconsSized": true,
+          "hidden": false,
+          "parentIsBody": true
+        },
+        "closedHidden": true,
+        "shot": "1440x900-s100-open.png"
+      }
+    },
+    {
+      "scenario": "1920x1080-s100",
+      "width": 1920,
+      "height": 1080,
+      "dsf": 1,
+      "theme": "light",
+      "scrollRatio": 0,
+      "overflow": {
+        "hasHScroll": false,
+        "clientWidth": 1910,
+        "scrollWidth": 1910,
+        "offenders": []
+      },
+      "menu": {
+        "opened": {
+          "found": true,
+          "btn": {
+            "left": 1661,
+            "right": 1730,
+            "top": 8,
+            "bottom": 42,
+            "w": 69
+          },
+          "menu": {
+            "left": 1490,
+            "right": 1730,
+            "top": 50,
+            "bottom": 198,
+            "w": 240,
+            "h": 148
+          },
+          "vw": 1920,
+          "vh": 1080,
+          "rightGap": 190,
+          "leftGap": 1490,
+          "bottomGap": 883,
+          "underButton": true,
+          "rightAligned": true,
+          "withinViewport": true,
+          "items": [
+            {
+              "text": "标签管理",
+              "inViewport": true,
+              "withinMenu": true,
+              "icon": {
+                "w": 14,
+                "h": 14
+              }
+            },
+            {
+              "text": "翻译设置",
+              "inViewport": true,
+              "withinMenu": true,
+              "icon": {
+                "w": 14,
+                "h": 14
+              }
+            },
+            {
+              "text": "数据导出",
+              "inViewport": true,
+              "withinMenu": true,
+              "icon": {
+                "w": 14,
+                "h": 14
+              }
+            },
+            {
+              "text": "同步设置",
+              "inViewport": true,
+              "withinMenu": true,
+              "icon": {
+                "w": 14,
+                "h": 14
+              }
+            }
+          ],
+          "allTextVisible": true,
+          "allIconsSized": true,
+          "hidden": false,
+          "parentIsBody": true
+        },
+        "closedHidden": true,
+        "shot": "1920x1080-s100-open.png"
+      }
+    },
+    {
+      "scenario": "1536x864-s125",
+      "width": 1536,
+      "height": 864,
+      "dsf": 1.25,
+      "theme": "light",
+      "scrollRatio": 0,
+      "overflow": {
+        "hasHScroll": false,
+        "clientWidth": 1526,
+        "scrollWidth": 1526,
+        "offenders": []
+      },
+      "menu": {
+        "opened": {
+          "found": true,
+          "btn": {
+            "left": 1439,
+            "right": 1508,
+            "top": 8,
+            "bottom": 42,
+            "w": 69
+          },
+          "menu": {
+            "left": 1268,
+            "right": 1508,
+            "top": 49,
+            "bottom": 197,
+            "w": 240,
+            "h": 148
+          },
+          "vw": 1536,
+          "vh": 864,
+          "rightGap": 28,
+          "leftGap": 1268,
+          "bottomGap": 667,
+          "underButton": true,
+          "rightAligned": true,
+          "withinViewport": true,
+          "items": [
+            {
+              "text": "标签管理",
+              "inViewport": true,
+              "withinMenu": true,
+              "icon": {
+                "w": 14,
+                "h": 14
+              }
+            },
+            {
+              "text": "翻译设置",
+              "inViewport": true,
+              "withinMenu": true,
+              "icon": {
+                "w": 14,
+                "h": 14
+              }
+            },
+            {
+              "text": "数据导出",
+              "inViewport": true,
+              "withinMenu": true,
+              "icon": {
+                "w": 14,
+                "h": 14
+              }
+            },
+            {
+              "text": "同步设置",
+              "inViewport": true,
+              "withinMenu": true,
+              "icon": {
+                "w": 14,
+                "h": 14
+              }
+            }
+          ],
+          "allTextVisible": true,
+          "allIconsSized": true,
+          "hidden": false,
+          "parentIsBody": true
+        },
+        "closedHidden": true,
+        "shot": "1536x864-s125-open.png"
+      }
+    },
+    {
+      "scenario": "1280x720-s150",
+      "width": 1280,
+      "height": 720,
+      "dsf": 1.5,
+      "theme": "light",
+      "scrollRatio": 0,
+      "overflow": {
+        "hasHScroll": false,
+        "clientWidth": 1270,
+        "scrollWidth": 1270,
+        "offenders": []
+      },
+      "menu": {
+        "opened": {
+          "found": true,
+          "btn": {
+            "left": 1183,
+            "right": 1252,
+            "top": 8,
+            "bottom": 42,
+            "w": 69
+          },
+          "menu": {
+            "left": 1012,
+            "right": 1252,
+            "top": 50,
+            "bottom": 198,
+            "w": 240,
+            "h": 148
+          },
+          "vw": 1280,
+          "vh": 720,
+          "rightGap": 28,
+          "leftGap": 1012,
+          "bottomGap": 523,
+          "underButton": true,
+          "rightAligned": true,
+          "withinViewport": true,
+          "items": [
+            {
+              "text": "标签管理",
+              "inViewport": true,
+              "withinMenu": true,
+              "icon": {
+                "w": 14,
+                "h": 14
+              }
+            },
+            {
+              "text": "翻译设置",
+              "inViewport": true,
+              "withinMenu": true,
+              "icon": {
+                "w": 14,
+                "h": 14
+              }
+            },
+            {
+              "text": "数据导出",
+              "inViewport": true,
+              "withinMenu": true,
+              "icon": {
+                "w": 14,
+                "h": 14
+              }
+            },
+            {
+              "text": "同步设置",
+              "inViewport": true,
+              "withinMenu": true,
+              "icon": {
+                "w": 14,
+                "h": 14
+              }
+            }
+          ],
+          "allTextVisible": true,
+          "allIconsSized": true,
+          "hidden": false,
+          "parentIsBody": true
+        },
+        "closedHidden": true,
+        "shot": "1280x720-s150-open.png"
+      }
+    },
+    {
+      "scenario": "1440x900-s125",
+      "width": 1440,
+      "height": 900,
+      "dsf": 1.25,
+      "theme": "light",
+      "scrollRatio": 0,
+      "overflow": {
+        "hasHScroll": false,
+        "clientWidth": 1430,
+        "scrollWidth": 1430,
+        "offenders": []
+      },
+      "menu": {
+        "opened": {
+          "found": true,
+          "btn": {
+            "left": 1343,
+            "right": 1412,
+            "top": 8,
+            "bottom": 42,
+            "w": 69
+          },
+          "menu": {
+            "left": 1172,
+            "right": 1412,
+            "top": 50,
+            "bottom": 198,
+            "w": 240,
+            "h": 148
+          },
+          "vw": 1440,
+          "vh": 900,
+          "rightGap": 28,
+          "leftGap": 1172,
+          "bottomGap": 703,
+          "underButton": true,
+          "rightAligned": true,
+          "withinViewport": true,
+          "items": [
+            {
+              "text": "标签管理",
+              "inViewport": true,
+              "withinMenu": true,
+              "icon": {
+                "w": 14,
+                "h": 14
+              }
+            },
+            {
+              "text": "翻译设置",
+              "inViewport": true,
+              "withinMenu": true,
+              "icon": {
+                "w": 14,
+                "h": 14
+              }
+            },
+            {
+              "text": "数据导出",
+              "inViewport": true,
+              "withinMenu": true,
+              "icon": {
+                "w": 14,
+                "h": 14
+              }
+            },
+            {
+              "text": "同步设置",
+              "inViewport": true,
+              "withinMenu": true,
+              "icon": {
+                "w": 14,
+                "h": 14
+              }
+            }
+          ],
+          "allTextVisible": true,
+          "allIconsSized": true,
+          "hidden": false,
+          "parentIsBody": true
+        },
+        "closedHidden": true,
+        "shot": "1440x900-s125-open.png"
+      }
+    },
+    {
+      "scenario": "1024x768-s100",
+      "width": 1024,
+      "height": 768,
+      "dsf": 1,
+      "theme": "light",
+      "scrollRatio": 0,
+      "overflow": {
+        "hasHScroll": false,
+        "clientWidth": 1014,
+        "scrollWidth": 1014,
+        "offenders": []
+      },
+      "menu": {
+        "opened": {
+          "found": true,
+          "btn": {
+            "left": 927,
+            "right": 996,
+            "top": 8,
+            "bottom": 42,
+            "w": 69
+          },
+          "menu": {
+            "left": 756,
+            "right": 996,
+            "top": 50,
+            "bottom": 198,
+            "w": 240,
+            "h": 148
+          },
+          "vw": 1024,
+          "vh": 768,
+          "rightGap": 28,
+          "leftGap": 756,
+          "bottomGap": 571,
+          "underButton": true,
+          "rightAligned": true,
+          "withinViewport": true,
+          "items": [
+            {
+              "text": "标签管理",
+              "inViewport": true,
+              "withinMenu": true,
+              "icon": {
+                "w": 14,
+                "h": 14
+              }
+            },
+            {
+              "text": "翻译设置",
+              "inViewport": true,
+              "withinMenu": true,
+              "icon": {
+                "w": 14,
+                "h": 14
+              }
+            },
+            {
+              "text": "数据导出",
+              "inViewport": true,
+              "withinMenu": true,
+              "icon": {
+                "w": 14,
+                "h": 14
+              }
+            },
+            {
+              "text": "同步设置",
+              "inViewport": true,
+              "withinMenu": true,
+              "icon": {
+                "w": 14,
+                "h": 14
+              }
+            }
+          ],
+          "allTextVisible": true,
+          "allIconsSized": true,
+          "hidden": false,
+          "parentIsBody": true
+        },
+        "closedHidden": true,
+        "shot": "1024x768-s100-open.png"
+      }
+    },
+    {
+      "scenario": "900x700-s100-narrow",
+      "width": 900,
+      "height": 700,
+      "dsf": 1,
+      "theme": "light",
+      "scrollRatio": 0,
+      "overflow": {
+        "hasHScroll": false,
+        "clientWidth": 890,
+        "scrollWidth": 890,
+        "offenders": []
+      },
+      "menu": {
+        "opened": {
+          "found": true,
+          "btn": {
+            "left": 809,
+            "right": 878,
+            "top": 8,
+            "bottom": 42,
+            "w": 69
+          },
+          "menu": {
+            "left": 638,
+            "right": 878,
+            "top": 50,
+            "bottom": 198,
+            "w": 240,
+            "h": 148
+          },
+          "vw": 900,
+          "vh": 700,
+          "rightGap": 22,
+          "leftGap": 638,
+          "bottomGap": 503,
+          "underButton": true,
+          "rightAligned": true,
+          "withinViewport": true,
+          "items": [
+            {
+              "text": "标签管理",
+              "inViewport": true,
+              "withinMenu": true,
+              "icon": {
+                "w": 14,
+                "h": 14
+              }
+            },
+            {
+              "text": "翻译设置",
+              "inViewport": true,
+              "withinMenu": true,
+              "icon": {
+                "w": 14,
+                "h": 14
+              }
+            },
+            {
+              "text": "数据导出",
+              "inViewport": true,
+              "withinMenu": true,
+              "icon": {
+                "w": 14,
+                "h": 14
+              }
+            },
+            {
+              "text": "同步设置",
+              "inViewport": true,
+              "withinMenu": true,
+              "icon": {
+                "w": 14,
+                "h": 14
+              }
+            }
+          ],
+          "allTextVisible": true,
+          "allIconsSized": true,
+          "hidden": false,
+          "parentIsBody": true
+        },
+        "closedHidden": true,
+        "shot": "900x700-s100-narrow-open.png"
+      }
+    },
+    {
+      "scenario": "1440x900-dark",
+      "width": 1440,
+      "height": 900,
+      "dsf": 1,
+      "theme": "dark",
+      "scrollRatio": 0,
+      "overflow": {
+        "hasHScroll": false,
+        "clientWidth": 1430,
+        "scrollWidth": 1430,
+        "offenders": []
+      },
+      "menu": {
+        "opened": {
+          "found": true,
+          "btn": {
+            "left": 1343,
+            "right": 1412,
+            "top": 8,
+            "bottom": 42,
+            "w": 69
+          },
+          "menu": {
+            "left": 1172,
+            "right": 1412,
+            "top": 50,
+            "bottom": 198,
+            "w": 240,
+            "h": 148
+          },
+          "vw": 1440,
+          "vh": 900,
+          "rightGap": 28,
+          "leftGap": 1172,
+          "bottomGap": 703,
+          "underButton": true,
+          "rightAligned": true,
+          "withinViewport": true,
+          "items": [
+            {
+              "text": "标签管理",
+              "inViewport": true,
+              "withinMenu": true,
+              "icon": {
+                "w": 14,
+                "h": 14
+              }
+            },
+            {
+              "text": "翻译设置",
+              "inViewport": true,
+              "withinMenu": true,
+              "icon": {
+                "w": 14,
+                "h": 14
+              }
+            },
+            {
+              "text": "数据导出",
+              "inViewport": true,
+              "withinMenu": true,
+              "icon": {
+                "w": 14,
+                "h": 14
+              }
+            },
+            {
+              "text": "同步设置",
+              "inViewport": true,
+              "withinMenu": true,
+              "icon": {
+                "w": 14,
+                "h": 14
+              }
+            }
+          ],
+          "allTextVisible": true,
+          "allIconsSized": true,
+          "hidden": false,
+          "parentIsBody": true
+        },
+        "closedHidden": true,
+        "shot": "1440x900-dark-open.png"
+      }
+    },
+    {
+      "scenario": "1280x720-dark",
+      "width": 1280,
+      "height": 720,
+      "dsf": 1,
+      "theme": "dark",
+      "scrollRatio": 0,
+      "overflow": {
+        "hasHScroll": false,
+        "clientWidth": 1270,
+        "scrollWidth": 1270,
+        "offenders": []
+      },
+      "menu": {
+        "opened": {
+          "found": true,
+          "btn": {
+            "left": 1183,
+            "right": 1252,
+            "top": 8,
+            "bottom": 42,
+            "w": 69
+          },
+          "menu": {
+            "left": 1012,
+            "right": 1252,
+            "top": 50,
+            "bottom": 198,
+            "w": 240,
+            "h": 148
+          },
+          "vw": 1280,
+          "vh": 720,
+          "rightGap": 28,
+          "leftGap": 1012,
+          "bottomGap": 523,
+          "underButton": true,
+          "rightAligned": true,
+          "withinViewport": true,
+          "items": [
+            {
+              "text": "标签管理",
+              "inViewport": true,
+              "withinMenu": true,
+              "icon": {
+                "w": 14,
+                "h": 14
+              }
+            },
+            {
+              "text": "翻译设置",
+              "inViewport": true,
+              "withinMenu": true,
+              "icon": {
+                "w": 14,
+                "h": 14
+              }
+            },
+            {
+              "text": "数据导出",
+              "inViewport": true,
+              "withinMenu": true,
+              "icon": {
+                "w": 14,
+                "h": 14
+              }
+            },
+            {
+              "text": "同步设置",
+              "inViewport": true,
+              "withinMenu": true,
+              "icon": {
+                "w": 14,
+                "h": 14
+              }
+            }
+          ],
+          "allTextVisible": true,
+          "allIconsSized": true,
+          "hidden": false,
+          "parentIsBody": true
+        },
+        "closedHidden": true,
+        "shot": "1280x720-dark-open.png"
+      }
+    },
+    {
+      "scenario": "1440x900-scrolled-mid",
+      "width": 1440,
+      "height": 900,
+      "dsf": 1,
+      "theme": "light",
+      "scrollRatio": 0.4,
+      "overflow": {
+        "hasHScroll": false,
+        "clientWidth": 1430,
+        "scrollWidth": 1430,
+        "offenders": []
+      },
+      "menu": {
+        "opened": {
+          "found": true,
+          "btn": {
+            "left": 1343,
+            "right": 1412,
+            "top": 8,
+            "bottom": 42,
+            "w": 69
+          },
+          "menu": {
+            "left": 1172,
+            "right": 1412,
+            "top": 50,
+            "bottom": 198,
+            "w": 240,
+            "h": 148
+          },
+          "vw": 1440,
+          "vh": 900,
+          "rightGap": 28,
+          "leftGap": 1172,
+          "bottomGap": 703,
+          "underButton": true,
+          "rightAligned": true,
+          "withinViewport": true,
+          "items": [
+            {
+              "text": "标签管理",
+              "inViewport": true,
+              "withinMenu": true,
+              "icon": {
+                "w": 14,
+                "h": 14
+              }
+            },
+            {
+              "text": "翻译设置",
+              "inViewport": true,
+              "withinMenu": true,
+              "icon": {
+                "w": 14,
+                "h": 14
+              }
+            },
+            {
+              "text": "数据导出",
+              "inViewport": true,
+              "withinMenu": true,
+              "icon": {
+                "w": 14,
+                "h": 14
+              }
+            },
+            {
+              "text": "同步设置",
+              "inViewport": true,
+              "withinMenu": true,
+              "icon": {
+                "w": 14,
+                "h": 14
+              }
+            }
+          ],
+          "allTextVisible": true,
+          "allIconsSized": true,
+          "hidden": false,
+          "parentIsBody": true
+        },
+        "closedHidden": true,
+        "shot": "1440x900-scrolled-mid-open.png"
+      }
+    },
+    {
+      "scenario": "1440x900-scrolled-low",
+      "width": 1440,
+      "height": 900,
+      "dsf": 1,
+      "theme": "light",
+      "scrollRatio": 0.8,
+      "overflow": {
+        "hasHScroll": false,
+        "clientWidth": 1430,
+        "scrollWidth": 1430,
+        "offenders": []
+      },
+      "menu": {
+        "opened": {
+          "found": true,
+          "btn": {
+            "left": 1343,
+            "right": 1412,
+            "top": 8,
+            "bottom": 42,
+            "w": 69
+          },
+          "menu": {
+            "left": 1172,
+            "right": 1412,
+            "top": 50,
+            "bottom": 198,
+            "w": 240,
+            "h": 148
+          },
+          "vw": 1440,
+          "vh": 900,
+          "rightGap": 28,
+          "leftGap": 1172,
+          "bottomGap": 703,
+          "underButton": true,
+          "rightAligned": true,
+          "withinViewport": true,
+          "items": [
+            {
+              "text": "标签管理",
+              "inViewport": true,
+              "withinMenu": true,
+              "icon": {
+                "w": 14,
+                "h": 14
+              }
+            },
+            {
+              "text": "翻译设置",
+              "inViewport": true,
+              "withinMenu": true,
+              "icon": {
+                "w": 14,
+                "h": 14
+              }
+            },
+            {
+              "text": "数据导出",
+              "inViewport": true,
+              "withinMenu": true,
+              "icon": {
+                "w": 14,
+                "h": 14
+              }
+            },
+            {
+              "text": "同步设置",
+              "inViewport": true,
+              "withinMenu": true,
+              "icon": {
+                "w": 14,
+                "h": 14
+              }
+            }
+          ],
+          "allTextVisible": true,
+          "allIconsSized": true,
+          "hidden": false,
+          "parentIsBody": true
+        },
+        "closedHidden": true,
+        "shot": "1440x900-scrolled-low-open.png"
+      }
+    }
+  ],
+  "interaction": {
+    "firstFocused": true,
+    "arrowFocusThird": true,
+    "escClosed": true,
+    "escFocusBack": true,
+    "outsideClickClosed": true,
+    "itemClickClosed": true,
+    "resize": {
+      "innerWidthAfterOverride": 1024,
+      "before": {
+        "within": true,
+        "rightGap": 28
+      },
+      "afterRaw": {
+        "within": false,
+        "rightGap": -388,
+        "rightAligned": false
+      },
+      "stillOpen": true,
+      "repositionedByNativeResize": false,
+      "afterDispatch": {
+        "within": true,
+        "rightGap": 28,
+        "rightAligned": true
+      },
+      "repositionedByDispatch": true
+    },
+    "scroll": {
+      "stillOpen": true,
+      "within": true,
+      "under": true
+    }
+  }
+}

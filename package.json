@@ -1,0 +1,24 @@
+{
+  "name": "@local/dsh-hana-research",
+  "version": "0.3.1",
+  "private": true,
+  "description": "Hana Research for DeepSeek Harness: literature discovery, journal tracking, project libraries, PDF reading and research notes.",
+  "type": "module",
+  "main": "lib/index.js",
+  "exports": {
+    ".": "./lib/index.js",
+    "./client": "./lib/client.js",
+    "./package.json": "./package.json"
+  },
+  "dsh": {
+    "client": {
+      "platform": "web"
+    }
+  },
+  "license": "MIT",
+  "dependencies": {
+    "docx": "^9.7.1",
+    "exceljs": "^4.4.0",
+    "pdfkit": "^0.20.1"
+  }
+}
