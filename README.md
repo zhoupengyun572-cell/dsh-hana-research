@@ -54,6 +54,14 @@
 - 每篇文献在证据页折叠填写结构化编码，显示已编码数量和必填完成状态
 - 删除已有编码值的字段默认被阻止，二次确认后才执行级联删除
 
+## 排版舒适化与主题适配（v37）
+
+- 全库消灭 <11px 字号与半像素取值：20 种字规格收敛为 16 种，最小可读字号 11px；阅读工作台笔记与 AI 简报正文升至 13px
+- v35 质量评定（RoB/GRADE）编辑器间距整体放宽一档
+- RoB 交通灯、GRADE 确定性色块改为"语义色相 × 卡片底"混合——宿主切深色后不再是刺眼浅色块；任务优先级、重复文献绿色系、选择浮层中性灰全部接入 token
+- border-radius 从 13 种散值收敛到 4 个 token 档位（6/8/10/12px + 药丸/圆形/发丝特例），234 处声明 token 化
+- 链接型按钮（导出下载 `<a class="button">`）不再继承浏览器默认蓝
+
 ## 统一弹层与通知（v36）
 
 - 全部模态共用同一个弹层工厂：Tab 焦点圈闭、关闭后焦点还原到触发按钮、遮罩点击关闭（带拖拽误触保护）、入场自动聚焦与 aria 兜底
@@ -96,7 +104,7 @@ npm run dev            # watch 模式
 
 - 数据层测试：`node tests/store.test.mjs` 等全部 `tests/*.test.mjs`（node:test，临时目录自动清理）
 - 前端单元：`cd web; node tests/markdown.test.mjs`
-- 重启后：`GET /api/hana-research/health` 应返回 `{ok:true, releaseVersion:"v36", schemaVersion:19, ...}`
+- 重启后：`GET /api/hana-research/health` 应返回 `{ok:true, releaseVersion:"v37", schemaVersion:19, ...}`
 - 数据目录：`$DSH_HOME/plugin-data/hana-research/research.db`（WAL，schema v15）
 
 ## 回滚
