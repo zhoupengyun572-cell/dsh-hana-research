@@ -106,7 +106,9 @@ test('literature controls disclose progressively and high-frequency actions upda
   librarySearch.value = '';
   librarySearch.dispatchEvent(new window.Event('input', { bubbles: true }));
   await wait(240);
-  assert.equal(window.document.querySelectorAll('.native-page-actions > *').length, 2, '页眉动作区 = 常驻工具组（命令面板/设置）+ 业务按钮');
+  assert.equal(window.document.querySelectorAll('.native-page-actions > *').length, 1, '页眉动作区仅业务按钮，工具组已上移常驻顶栏');
+  assert.equal(window.document.querySelectorAll('.app-bar .hr-head-tool').length, 2, '顶栏常驻命令面板/设置入口');
+  assert.ok(window.document.querySelector('.workspace-switcher [data-route="literature"]'), 'v38 常驻工作区切换器已激活');
   assert.ok(window.document.querySelector('#manage-menu-pop #agent-literature'));
   const toggle = window.document.querySelector('#toggle-filters');
   const panel = window.document.querySelector('#filter-panel');
@@ -302,7 +304,8 @@ test('project navigation stays focused and task/note writes update the drawer in
   await import(`../assets/research.js?project-local-${Date.now()}`);
   await wait(40);
 
-  assert.equal(window.document.querySelector('.workspace-switcher'), null);
+  assert.ok(window.document.querySelector('.workspace-switcher [data-route="projects"]'), 'v38 常驻切换器已激活');
+  assert.equal(window.document.querySelector('.workspace-switcher [data-route="projects"]')?.getAttribute('aria-current'), 'page', '当前工作区在切换器中标亮');
   assert.ok(window.document.querySelector('.native-page-head'));
   window.document.querySelector('[data-project-id="p1"]').click();
   await wait(50);

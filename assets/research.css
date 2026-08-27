@@ -2910,3 +2910,39 @@ button[aria-busy="true"], .button[aria-busy="true"] { cursor: wait; }
 /* ── v37：链接型按钮（<a class="button"> 导出下载）不继承浏览器默认蓝 ── */
 a.button { color: var(--research-ink); text-decoration: none; }
 a.button:hover, a.button:focus-visible { color: var(--research-accent-ink); }
+
+/* ── v38：常驻应用壳（app-bar 激活 + 工作区切换器接入客户端路由）── */
+.app-bar-spacer { flex: 1; }
+.app-bar-utils { border-right: 0; padding-right: 0; margin-right: 0; }
+.research-shell { padding-top: 0; }
+
+/* 视图转场（Chromium View Transitions；其余浏览器直接切换） */
+@media (prefers-reduced-motion: no-preference) {
+  ::view-transition-old(root) { animation: hana-vt-out 140ms cubic-bezier(.4,0,1,1) both; }
+  ::view-transition-new(root) { animation: hana-vt-in 220ms cubic-bezier(.22,.8,.24,1) both; }
+}
+@keyframes hana-vt-out { to { opacity: 0; transform: translateY(-6px); } }
+@keyframes hana-vt-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+
+/* ── v38：右键上下文菜单 ── */
+.menu-pop.context-menu {
+  position: fixed;
+  left: 0; top: 0;
+  min-width: 200px; max-width: 320px;
+  animation: menu-pop-in 150ms cubic-bezier(.2,.9,.25,1.08) both;
+}
+.menu-pop.context-menu.closing { opacity: 0; transition: opacity 120ms ease; pointer-events: none; }
+.context-menu-item {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  width: 100%; padding: 9px 11px; border: 0; border-radius: var(--research-radius);
+  background: transparent; color: var(--research-ink); text-align: left;
+  font-size: 13px; cursor: pointer;
+}
+.context-menu-item:hover, .context-menu-item:focus-visible {
+  color: var(--research-accent-ink); background: var(--research-accent-soft); outline: none;
+}
+.context-menu-item.danger { color: var(--research-danger); }
+.context-menu-item small {
+  max-width: 210px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  color: var(--research-muted); font-size: 12px; font-weight: 450;
+}

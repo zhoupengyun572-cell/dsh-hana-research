@@ -1,5 +1,5 @@
 const root = document.querySelector('#research-root');
-const workspace = document.body.dataset.workspace;
+let workspace = document.body.dataset.workspace === 'projects' ? 'projects' : 'literature';
 const researchChannel = typeof BroadcastChannel === 'function' ? new BroadcastChannel('hana-research-reader-v1') : null;
 const searchIcon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg>';
 const sparkIcon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 3v4M12 17v4M3 12h4M17 12h4M5.6 5.6l2.8 2.8M15.6 15.6l2.8 2.8M18.4 5.6l-2.8 2.8M8.4 15.6l-2.8 2.8"/></svg>';
@@ -127,6 +127,174 @@ let hanaShortcutsInstalled = false;
 let hanaShortcutsEnabled = true;
 
 /** 插件内快捷键：不接管 Harness 的 Ctrl/⌘K；Alt 1/2/3 切换项目页签；N 新建项目。 */
+// ── v38：客户端工作区路由（SPA）─────────────────────────────────────
+// 文献中心 / 项目库在同一文档内切换：pushState + View Transitions。
+// 深链接由服务端渲染的 data-workspace 初始化（旧书签完全兼容）；
+// 阅读器保持整页跳转（编辑器窗口隐喻），不经此路由。
+
+const HANA_ROUTE_PATHS = {
+  literature: '/ui/hana-research/literature',
+  projects: '/ui/hana-research/projects',
+};
+const routeScrollMemory = { literature: 0, projects: 0 };
+
+function prefersReducedMotion() {
+  return Boolean(window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches);
+}
+
+function routeFromLocation() {
+  return /\/projects\/?$/.test(location.pathname) ? 'projects' : 'literature';
+}
+
+/** 等待视图真实内容出现后恢复滚动位置（骨架屏期间高度不足）。 */
+function restoreRouteScroll(route, top) {
+  if (!top) return;
+  const marker = route === 'literature' ? '#paper-search' : '#project-list-view';
+  const startedAt = Date.now();
+  const tick = () => {
+    if (workspace === route && document.querySelector(marker)) { window.scrollTo(0, top); return; }
+    if (Date.now() - startedAt < 2500) window.setTimeout(tick, 120);
+  };
+  window.setTimeout(tick, 60);
+}
+
+function updateAppBarRoute() {
+  document.querySelectorAll('.workspace-switcher [data-route]').forEach(link => {
+    if (link.dataset.route === workspace) link.setAttribute('aria-current', 'page');
+    else link.removeAttribute('aria-current');
+  });
+}
+
+async function navigateWorkspace(route, { push = true } = {}) {
+  if (!HANA_ROUTE_PATHS[route] || route === workspace) return;
+  // 离开当前视图：收起项目抽屉、记忆滚动、保存文献筛选现场（复用 pagehide 保存器）。
+  if (document.querySelector('#project-drawer:not([hidden])')) closeProjectDrawer();
+  routeScrollMemory[workspace] = window.scrollY || 0;
+  if (workspace === 'literature') persistLiteratureState();
+  workspace = route;
+  document.body.dataset.workspace = route;
+  const savedScroll = routeScrollMemory[route] || 0;
+  routeScrollMemory[route] = 0;
+  const runSwap = () => {
+    window.scrollTo(0, 0);
+    (route === 'projects' ? loadProjects : loadLiterature)();
+    updateAppBarRoute();
+    restoreRouteScroll(route, savedScroll);
+  };
+  try {
+    if (document.startViewTransition && !prefersReducedMotion()) document.startViewTransition(runSwap);
+    else runSwap();
+  } catch { runSwap(); }
+  if (push) history.pushState({ hanaWorkspace: route }, '', HANA_ROUTE_PATHS[route]);
+}
+
+window.addEventListener('popstate', event => {
+  navigateWorkspace(event.state?.hanaWorkspace || routeFromLocation(), { push: false });
+});
+
+// ── v38：右键上下文菜单（复用 .menu-pop 视觉语言；pointer 定位 + 视口钳制）──
+
+let contextMenuEl = null;
+let contextMenuDismiss = null;
+
+function closeContextMenu() {
+  if (contextMenuDismiss) { contextMenuDismiss(); return; }
+}
+
+function buildContextMenuDismiss(menu) {
+  const onOutside = event => { if (!menu.contains(event.target)) closeContextMenu(); };
+  const onEscape = event => {
+    if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); closeContextMenu(); }
+  };
+  const onScrollKey = () => closeContextMenu();
+  document.addEventListener('pointerdown', onOutside, true);
+  document.addEventListener('keydown', onEscape, true);
+  window.addEventListener('resize', onScrollKey);
+  contextMenuDismiss = () => {
+    document.removeEventListener('pointerdown', onOutside, true);
+    document.removeEventListener('keydown', onEscape, true);
+    window.removeEventListener('resize', onScrollKey);
+    contextMenuDismiss = null;
+    if (contextMenuEl === menu) contextMenuEl = null;
+    menu.classList.add('closing');
+    window.setTimeout(() => menu.remove(), 120);
+  };
+}
+
+async function copyTextToClipboard(text) {
+  try {
+    await navigator.clipboard.writeText(text);
+    showNotice('已复制到剪贴板。');
+  } catch {
+    showNotice('复制失败：浏览器未授权剪贴板访问。', true);
+  }
+}
+
+function openContextMenu(x, y, items) {
+  closeContextMenu();
+  const menu = document.createElement('div');
+  menu.className = 'menu-pop context-menu';
+  menu.setAttribute('role', 'menu');
+  menu.innerHTML = items.map((item, index) =>
+    `<button type="button" role="menuitem" class="context-menu-item${item.danger ? ' danger' : ''}" data-ctx-index="${index}"><span>${escapeHtml(item.label)}</span>${item.hint ? `<small>${escapeHtml(item.hint)}</small>` : ''}</button>`).join('');
+  document.body.append(menu);
+  const rect = menu.getBoundingClientRect();
+  const left = Math.max(8, Math.min(x, window.innerWidth - rect.width - 10));
+  const top = Math.max(8, Math.min(y, window.innerHeight - rect.height - 10));
+  menu.style.left = `${Math.round(left)}px`;
+  menu.style.top = `${Math.round(top)}px`;
+  contextMenuEl = menu;
+  menu.querySelectorAll('[data-ctx-index]').forEach(button => {
+    button.addEventListener('click', () => {
+      const item = items[Number(button.dataset.ctxIndex)];
+      closeContextMenu();
+      item?.onSelect?.();
+    });
+  });
+  buildContextMenuDismiss(menu);
+  // 首项聚焦，支持方向键/Enter 操作（客户端惯例）。
+  menu.querySelector('.context-menu-item')?.focus({ preventScroll: true });
+}
+
+function bindContextMenus() {
+  root.addEventListener('contextmenu', event => {
+    if (event.target.closest('.modal-layer, .command-layer, input, textarea, select')) return;
+    const paperCard = event.target.closest('[data-paper-id]');
+    if (paperCard?.dataset.paperId) {
+      event.preventDefault();
+      const paper = state.papers.find(item => item.id === paperCard.dataset.paperId)
+        || state.projectPapers?.find(item => item.id === paperCard.dataset.paperId);
+      if (!paper) return;
+      const items = [];
+      const projectIdForReader = state.selectedProjectId || (state.drawerProjectId ?? '');
+      if (paper.attachmentId && projectIdForReader) {
+        items.push({ label: '在阅读器打开', hint: 'PDF 精读', onSelect: () => openPdfReader(projectIdForReader, paper.attachmentId) });
+      }
+      items.push({ label: '复制标题', onSelect: () => copyTextToClipboard(paper.title || '') });
+      if (paper.doi) items.push({ label: '复制 DOI', hint: String(paper.doi), onSelect: () => copyTextToClipboard(String(paper.doi)) });
+      if (!items.length) return;
+      openContextMenu(event.clientX, event.clientY, items);
+      return;
+    }
+    const projectCard = event.target.closest('[data-project-id]');
+    if (projectCard?.dataset.projectId) {
+      event.preventDefault();
+      const project = state.projects.find(item => item.id === projectCard.dataset.projectId);
+      if (!project) return;
+      openContextMenu(event.clientX, event.clientY, [
+        { label: '打开项目详情', hint: '概览 · 证据 · 任务', onSelect: () => openProjectDrawer(project.id) },
+        { label: '复制项目名称', onSelect: () => copyTextToClipboard(project.title || '') },
+      ]);
+    }
+  });
+}
+if (typeof root !== 'undefined') bindContextMenus();
+
+// v38：视图每次重渲染都会重建顶栏，用轻量观察器保持切换器选中态。
+const appBarSyncObserver = new MutationObserver(() => updateAppBarRoute());
+if (typeof root !== 'undefined' && typeof appBarSyncObserver !== 'undefined') appBarSyncObserver.observe(root, { childList: true });
+
+
 function installHanaShortcuts(enabled) {
   hanaShortcutsEnabled = Boolean(enabled);
   if (hanaShortcutsInstalled) return;
@@ -166,11 +334,17 @@ function installHanaShortcuts(enabled) {
   });
 }
 
-/** 顶栏设置入口（shell 渲染后由事件委托绑定）。 */
+/** 顶栏与页面动作入口（shell 渲染后由事件委托绑定）。 */
 function ensureSettingsButtonBinding() {
   root.addEventListener('click', (event) => {
     if (event.target.closest('#open-settings, [data-open-settings]')) renderSettingsModal();
     if (event.target.closest('#open-command-palette, [data-open-command-palette]')) renderCommandPalette();
+    const routeLink = event.target.closest('.workspace-switcher [data-route]');
+    // 普通左键拦截为客户端路由；Ctrl/Cmd/Shift/中键交给浏览器原行为（新开标签等）。
+    if (routeLink && event.button === 0 && !event.metaKey && !event.ctrlKey && !event.shiftKey && !event.altKey) {
+      event.preventDefault();
+      navigateWorkspace(routeLink.dataset.route);
+    }
   }, { signal: undefined });
 }
 if (typeof root !== 'undefined') ensureSettingsButtonBinding();
@@ -267,8 +441,8 @@ function commandPaletteCommands() {
 
 function executePaletteCommand(id) {
   const afterClose = action => { closeModalLayer(); window.setTimeout(action, 170); };
-  if (id === 'goto-literature') { window.location.href = '/ui/hana-research/literature'; return; }
-  if (id === 'goto-projects') { window.location.href = '/ui/hana-research/projects'; return; }
+  if (id === 'goto-literature') { navigateWorkspace('literature'); return; }
+  if (id === 'goto-projects') { navigateWorkspace('projects'); return; }
   if (id === 'open-settings') { afterClose(renderSettingsModal); return; }
   if (id === 'new-project') { afterClose(() => document.querySelector('#create-project')?.click()); return; }
   if (id === 'open-project') {
@@ -450,18 +624,26 @@ async function runButtonAction(button, options, operation) {
 const HR_ICON_PALETTE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 9V5a2 2 0 1 0-2 2h4Zm6 0V5a2 2 0 1 1 2 2h-4Zm-6 6v4a2 2 0 1 1-2-2h4Zm6 0v4a2 2 0 1 0 2-2h-4Z"/><rect x="9" y="9" width="6" height="6" rx="1"/></svg>';
 const HR_ICON_GEAR = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9c.26.604.852.997 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z"/></svg>';
 
+const HR_ICON_BRAND = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>';
+
 function shell(kicker, title, copy, body, topActions = '') {
   return `<div class="research-shell native-shell">
+    <header class="app-bar">
+      <div class="app-bar-brand"><span class="app-bar-mark" aria-hidden="true">${HR_ICON_BRAND}</span><span class="app-bar-title">文献研究台</span></div>
+      <nav class="workspace-switcher" aria-label="工作区切换">
+        <a href="/ui/hana-research/literature" data-route="literature">文献中心</a>
+        <a href="/ui/hana-research/projects" data-route="projects">项目库</a>
+      </nav>
+      <span class="app-bar-spacer"></span>
+      <span class="hr-head-utils app-bar-utils">
+        <button type="button" class="hr-head-tool" data-open-command-palette title="命令面板（Alt P）" aria-label="打开命令面板">${HR_ICON_PALETTE}</button>
+        <button type="button" class="hr-head-tool" data-open-settings title="设置与个性化" aria-label="打开设置与个性化">${HR_ICON_GEAR}</button>
+      </span>
+    </header>
     <main class="app-content">
       <header class="native-page-head">
         <div><span class="native-page-kicker">${kicker}</span><h1>${title}</h1><p class="workspace-copy">${copy}</p></div>
-        <div class="native-page-actions">
-          <span class="hr-head-utils">
-            <button type="button" class="hr-head-tool" data-open-command-palette title="命令面板（Alt P）" aria-label="打开命令面板">${HR_ICON_PALETTE}</button>
-            <button type="button" class="hr-head-tool" data-open-settings title="设置与个性化" aria-label="打开设置与个性化">${HR_ICON_GEAR}</button>
-          </span>
-          ${topActions}
-        </div>
+        ${topActions ? `<div class="native-page-actions">${topActions}</div>` : ''}
       </header>
       ${body}
     </main>
@@ -5807,5 +5989,6 @@ function cssEscape(value) {
   return window.CSS?.escape ? window.CSS.escape(value) : String(value).replace(/[^a-zA-Z0-9_-]/g, '\\$&');
 }
 
+updateAppBarRoute();
 if (workspace === 'projects') loadProjects();
 else loadLiterature();
