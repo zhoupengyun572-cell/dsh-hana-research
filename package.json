@@ -30,6 +30,7 @@
     "tools/search-project-papers.js",
     "tools/subscribe-topic.js",
     "tools/unsubscribe-topic.js",
+    "SECURITY.md",
     "README.md",
     "THIRD_PARTY_LICENSES.md"
   ],

@@ -118,6 +118,7 @@ test("release package is whitelist-only and stays within the size budget", () =>
 		"cordis.patch.yml",
 		"tools",
 		"README.md",
+		"SECURITY.md",
 		"THIRD_PARTY_LICENSES.md",
 		"package.json",
 	]);
