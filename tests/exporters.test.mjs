@@ -17,7 +17,7 @@ import {
 
 function makeFixture(t) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "hana-export-"));
-  const store = new ResearchStore(dir);
+  const store = new ResearchStore(dir, { seedDemoData: true });
   t.after(() => {
     clearResearchStoreCache();
     store.close();

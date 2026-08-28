@@ -63,7 +63,7 @@ test("multipart parser: file + text fields", (t) => {
 
 test("upload PDF: stores content-addressed attachment, dedupes, links to project", (t) => {
 	const dir = makeTempDir(t);
-	const store = new ResearchStore(dir);
+	const store = new ResearchStore(dir, { seedDemoData: true });
 	const project = store.listProjects()[0];
 	const buffer = fakePdfBuffer(8192);
 
@@ -86,7 +86,7 @@ test("upload PDF: stores content-addressed attachment, dedupes, links to project
 
 test("upload rejects non-PDF content", (t) => {
 	const dir = makeTempDir(t);
-	const store = new ResearchStore(dir);
+	const store = new ResearchStore(dir, { seedDemoData: true });
 	const project = store.listProjects()[0];
 	assert.throws(
 		() => storeUploadedPdf({ store, projectId: project.id, buffer: Buffer.from("not a pdf at all, just text"), originalName: "x.pdf", title: "x" }),
@@ -97,7 +97,7 @@ test("upload rejects non-PDF content", (t) => {
 
 test("selection note roundtrip via store (reader path)", (t) => {
 	const dir = makeTempDir(t);
-	const store = new ResearchStore(dir);
+	const store = new ResearchStore(dir, { seedDemoData: true });
 	const project = store.listProjects()[0];
 	const buffer = fakePdfBuffer(4096);
 	const uploaded = storeUploadedPdf({ store, projectId: project.id, buffer, originalName: "a.pdf", title: "阅读测试" });
@@ -125,7 +125,7 @@ test("selection note roundtrip via store (reader path)", (t) => {
 
 test("withTransaction rolls back on import failure (no orphan files)", (t) => {
 	const dir = makeTempDir(t);
-	const store = new ResearchStore(dir);
+	const store = new ResearchStore(dir, { seedDemoData: true });
 	store.db.exec("CREATE TABLE tx_guard (id TEXT PRIMARY KEY)");
 	assert.throws(() => withTransaction(store.db, () => {
 		store.db.prepare("INSERT INTO tx_guard VALUES('a')").run();

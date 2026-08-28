@@ -10,7 +10,7 @@ import { paperToBibtex, papersToBibtex, paperToRis, papersToRis, exportCitations
 
 function makeStore(t) {
 	const dir = fs.mkdtempSync(path.join(os.tmpdir(), "hana-enh-"));
-	const store = new ResearchStore(dir);
+	const store = new ResearchStore(dir, { seedDemoData: true });
 	t.after(() => {
 		clearResearchStoreCache();
 		store.close();
@@ -142,7 +142,7 @@ test("citedByCount roundtrip: saved via upsertSearchResult, exposed by rowToPape
 		clearResearchStoreCache();
 		fs.rmSync(dir, { recursive: true, force: true });
 	});
-	const store = new ResearchStore(dir);
+	const store = new ResearchStore(dir, { seedDemoData: true });
 	const paper = store.upsertSearchResult({
 		source: "openalex", sourceId: "w-cited", doi: "10.9999/cited", title: "被引文献", authors: "",
 		venue: "Emotion", year: 2025, abstract: "", topic: "", pdfUrl: null, sourceUrl: "", sourceName: "OpenAlex",
@@ -151,7 +151,7 @@ test("citedByCount roundtrip: saved via upsertSearchResult, exposed by rowToPape
 	assert.equal(paper.citedByCount, 42);
 	// 重新打开 store（模拟重启）仍能读到
 	store.close();
-	const store2 = new ResearchStore(dir);
+	const store2 = new ResearchStore(dir, { seedDemoData: true });
 	const found = store2.listPapers().find(p => p.doi === "10.9999/cited");
 	assert.equal(found.citedByCount, 42);
 	// 缺失或非法值落库为 null

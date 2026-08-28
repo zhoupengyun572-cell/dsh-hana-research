@@ -9,7 +9,7 @@ import { buildQualityExport } from '../lib/quality-export.js';
 
 function fixture(t) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'hana-quality-'));
-  const store = new ResearchStore(dir);
+  const store = new ResearchStore(dir, { seedDemoData: true });
   t.after(() => { store.close(); fs.rmSync(dir, { recursive: true, force: true }); });
   const project = store.createProject({ title: '质量评定测试' });
   const papers = store.listPapers().slice(0, 2);

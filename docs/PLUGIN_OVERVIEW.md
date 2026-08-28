@@ -14,9 +14,9 @@
 | 包名 | `dsh-hana-research`（`dsh.bundle` → `cordis.patch.yml` → `lib/index.js`，client 平台 web） |
 | 数据库 | SQLite WAL，schema 版本 **v19**（`$DSH_HOME/plugin-data/hana-research/research.db`） |
 | 前端资产版本 | 与 `HANA_RELEASE_VERSION` 共用 **0.4.0-beta.1**（`lib/pages.js`，升级资源强制刷新缓存） |
-| 自动化测试 | `tests/*.test.mjs` **157/157** 通过；`web/tests/markdown.test.mjs` **7/7** 通过 |
+| 自动化测试 | `tests/*.test.mjs` **158/158** 通过；`web/tests/markdown.test.mjs` **7/7** 通过 |
 | 当前验证套件 | `tools/{button-audit, verify-cockpit, verify-evidence-closure, verify-shortcuts, walk-workbench-buttons}.mjs` |
-| 部署目标 | `C:\Users\zhou\.dsh\profiles\node_modules\@local\dsh-hana-research\`（+ `cordis.patch.yml` 挂载） |
+| 部署目标 | 通过 `dsh plugin --profile web add dsh-hana-research` 安装到目标 Profile，并由包内 `dsh.bundle` 自动挂载 |
 
 ## 3. 顶层结构（当前在用的最小集）
 

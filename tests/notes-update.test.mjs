@@ -36,7 +36,7 @@ function request(api, method, pathname, body) {
 
 test("PATCH /projects/:id/notes/:noteId updates content/tags/quote", async (t) => {
 	const dir = fs.mkdtempSync(path.join(os.tmpdir(), "hana-api-v9-"));
-	const store = new ResearchStore(dir);
+	const store = new ResearchStore(dir, { seedDemoData: true });
 	t.after(() => { clearResearchStoreCache(); store.close(); fs.rmSync(dir, { recursive: true, force: true }); });
 	const api = createApiHandler(makeCtx(), store);
 
@@ -77,7 +77,7 @@ test("PATCH /projects/:id/notes/:noteId updates content/tags/quote", async (t) =
 
 test("GET /capabilities advertises evidence/cockpitStats/settings", async (t) => {
 	const dir = fs.mkdtempSync(path.join(os.tmpdir(), "hana-api-caps-"));
-	const store = new ResearchStore(dir);
+	const store = new ResearchStore(dir, { seedDemoData: true });
 	t.after(() => { clearResearchStoreCache(); store.close(); fs.rmSync(dir, { recursive: true, force: true }); });
 	const api = createApiHandler(makeCtx(), store);
 
@@ -92,7 +92,7 @@ test("GET /capabilities advertises evidence/cockpitStats/settings", async (t) =>
 
 test("GET /papers paginates and filters while preserving legacy full response", async (t) => {
 	const dir = fs.mkdtempSync(path.join(os.tmpdir(), "hana-api-papers-page-"));
-	const store = new ResearchStore(dir);
+	const store = new ResearchStore(dir, { seedDemoData: true });
 	t.after(() => { clearResearchStoreCache(); store.close(); fs.rmSync(dir, { recursive: true, force: true }); });
 	const api = createApiHandler(makeCtx(), store);
 
@@ -119,7 +119,7 @@ test("GET /papers paginates and filters while preserving legacy full response", 
 
 test("GET /projects/:id/cockpit-stats aggregates via route", async (t) => {
 	const dir = fs.mkdtempSync(path.join(os.tmpdir(), "hana-api-cockpit-"));
-	const store = new ResearchStore(dir);
+	const store = new ResearchStore(dir, { seedDemoData: true });
 	t.after(() => { clearResearchStoreCache(); store.close(); fs.rmSync(dir, { recursive: true, force: true }); });
 	const api = createApiHandler(makeCtx(), store);
 
@@ -154,7 +154,7 @@ test("GET /projects/:id/cockpit-stats aggregates via route", async (t) => {
 
 test("journal manager routes create, edit, pause and remove custom sources", async (t) => {
 	const dir = fs.mkdtempSync(path.join(os.tmpdir(), "hana-api-journals-"));
-	const store = new ResearchStore(dir);
+	const store = new ResearchStore(dir, { seedDemoData: true });
 	t.after(() => { clearResearchStoreCache(); store.close(); fs.rmSync(dir, { recursive: true, force: true }); });
 	const api = createApiHandler(makeCtx(), store);
 

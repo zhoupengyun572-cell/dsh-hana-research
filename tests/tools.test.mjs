@@ -28,7 +28,7 @@ const TOOLS = [
 
 function makeStore(t) {
 	const dir = fs.mkdtempSync(path.join(os.tmpdir(), "hana-tools-test-"));
-	const store = new ResearchStore(dir);
+	const store = new ResearchStore(dir, { seedDemoData: true });
 	t.after(() => {
 		clearResearchStoreCache();
 		store.close();
@@ -79,7 +79,7 @@ test("list_research_projects (read) returns projects with counts", (t) => {
 	const { store, ctx } = makeStore(t);
 	const result = listResearchProjects.execute({}, ctx);
 	assert.equal(result.content[0].type, "text");
-	assert.ok(result.content[0].text.includes("青少年情绪应对"));
+	assert.ok(result.content[0].text.includes("示例：情绪调节文献综述"));
 	assert.equal(result.details.projects.length, 2);
 });
 

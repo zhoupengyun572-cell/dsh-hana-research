@@ -9,7 +9,7 @@ import { buildPrismaCsv, buildPrismaJson, buildPrismaSvg } from '../lib/prisma-e
 
 function fixture(t) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'hana-prisma-'));
-  const store = new ResearchStore(dir);
+  const store = new ResearchStore(dir, { seedDemoData: true });
   t.after(() => {
     clearResearchStoreCache();
     store.close();

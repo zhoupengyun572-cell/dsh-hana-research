@@ -9,7 +9,7 @@ import { createApiHandler } from "../lib/api.js";
 
 function fixture(t) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "hana-evidence-coding-"));
-  const store = new ResearchStore(dir);
+  const store = new ResearchStore(dir, { seedDemoData: true });
   t.after(() => {
     clearResearchStoreCache();
     store.close();
@@ -111,18 +111,18 @@ test("evidence coding API exposes templates, saves fields and updates a paper", 
 test("v15 migration creates one recoverable backup for a v14 database", () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "hana-v15-migration-"));
   try {
-    const initial = new ResearchStore(dir);
+    const initial = new ResearchStore(dir, { seedDemoData: true });
     const dbPath = initial.dbPath;
     initial.close();
     const db = new DatabaseSync(dbPath);
     db.prepare("UPDATE research_meta SET value='14' WHERE key='schema_version'").run();
     db.close();
-    const migrated = new ResearchStore(dir);
+    const migrated = new ResearchStore(dir, { seedDemoData: true });
     assert.equal(migrated.getMetaValue("schema_version"), "19");
     migrated.close();
     const firstCount = fs.readdirSync(dir).filter(name => name.includes(".bak-v15-")).length;
     assert.equal(firstCount, 1);
-    const reopened = new ResearchStore(dir);
+    const reopened = new ResearchStore(dir, { seedDemoData: true });
     reopened.close();
     const secondCount = fs.readdirSync(dir).filter(name => name.includes(".bak-v15-")).length;
     assert.equal(secondCount, firstCount);

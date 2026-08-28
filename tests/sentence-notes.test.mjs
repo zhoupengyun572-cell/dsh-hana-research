@@ -14,7 +14,7 @@ import { storeUploadedPdf } from "../lib/pdf-import.js";
 
 function makeStore(t, dirName = "hana-v13-") {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), dirName));
-  const store = new ResearchStore(dir);
+  const store = new ResearchStore(dir, { seedDemoData: true });
   t.after(() => {
     clearResearchStoreCache();
     store.close();
@@ -54,7 +54,7 @@ function sampleNote(store, projectId, paperId, attachmentId, overrides = {}) {
 test("v13 migration backs up pre-13 DB once and is idempotent on reopen", (t) => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "hana-v13-mig-"));
   try {
-    const store1 = new ResearchStore(dir);
+    const store1 = new ResearchStore(dir, { seedDemoData: true });
     assert.equal(store1.getMetaValue("schema_version"), "19");
     assert.equal(RESEARCH_SCHEMA_VERSION, 19);
     const backupsAfterFirstOpen = fs.readdirSync(dir).filter(f => f.includes(".bak-v13-")).length;
@@ -62,7 +62,7 @@ test("v13 migration backs up pre-13 DB once and is idempotent on reopen", (t) =>
     store1.close();
     clearResearchStoreCache();
     // 二次打开：不应再生成新备份
-    const store2 = new ResearchStore(dir);
+    const store2 = new ResearchStore(dir, { seedDemoData: true });
     const backupsAfterSecondOpen = fs.readdirSync(dir).filter(f => f.includes(".bak-v13-")).length;
     assert.equal(backupsAfterSecondOpen, backupsAfterFirstOpen, "重复打开不得重复备份");
     // 默认分类种子

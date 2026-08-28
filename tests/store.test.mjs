@@ -45,12 +45,14 @@ test("schema v19 init: tables, WAL, meta version", (t) => {
 	}
 	assert.ok(fs.existsSync(path.join(dir, "research.db")));
 	assert.ok(fs.existsSync(path.join(dir, "research.db-wal")), "WAL journal file exists");
+	assert.deepEqual(store.listProjects(), [], "a new community database starts without author projects");
+	assert.deepEqual(store.listPapers(), [], "a new community database starts without demo papers");
 	store.close();
 });
 
-test("seed data: 2 projects, papers present, favorite flag false", (t) => {
+test("demo data is available only through explicit test/development opt-in", (t) => {
 	const dir = makeTempDir(t);
-	const store = new ResearchStore(dir);
+	const store = new ResearchStore(dir, { seedDemoData: true });
 	const projects = store.listProjects();
 	assert.equal(projects.length, 2);
 	assert.ok(projects.every((p) => typeof p.paperCount === "number"));
@@ -62,7 +64,7 @@ test("seed data: 2 projects, papers present, favorite flag false", (t) => {
 
 test("project CRUD: create, get, favorite guard", (t) => {
 	const dir = makeTempDir(t);
-	const store = new ResearchStore(dir);
+	const store = new ResearchStore(dir, { seedDemoData: true });
 	const project = store.createProject({ title: "测试项目", description: "desc", color: "#112233" });
 	assert.ok(project.id);
 	assert.equal(store.getProject(project.id).title, "测试项目");
@@ -72,7 +74,7 @@ test("project CRUD: create, get, favorite guard", (t) => {
 
 test("paper favorite toggle with changes guard", (t) => {
 	const dir = makeTempDir(t);
-	const store = new ResearchStore(dir);
+	const store = new ResearchStore(dir, { seedDemoData: true });
 	const paper = store.listPapers()[0];
 	const favorited = store.setFavorite(paper.id, true);
 	assert.equal(favorited.favorite, true);
@@ -82,7 +84,7 @@ test("paper favorite toggle with changes guard", (t) => {
 
 test("notes: create, update, listTags, delete", (t) => {
 	const dir = makeTempDir(t);
-	const store = new ResearchStore(dir);
+	const store = new ResearchStore(dir, { seedDemoData: true });
 	const project = store.listProjects()[0];
 	const paper = store.listPapers()[0];
 	const note = store.createNote({
@@ -102,7 +104,7 @@ test("notes: create, update, listTags, delete", (t) => {
 
 test("selection note: highlight + linked note in one transaction", (t) => {
 	const dir = makeTempDir(t);
-	const store = new ResearchStore(dir);
+	const store = new ResearchStore(dir, { seedDemoData: true });
 	const project = store.listProjects()[0];
 	const paper = store.listPapers()[0];
 	// link a fake attachment + project_papers row so FK/JOIN constraints pass
@@ -127,7 +129,7 @@ test("selection note: highlight + linked note in one transaction", (t) => {
 
 test("transaction compat layer: commit on success, rollback on error", (t) => {
 	const dir = makeTempDir(t);
-	const store = new ResearchStore(dir);
+	const store = new ResearchStore(dir, { seedDemoData: true });
 	store.db.exec("CREATE TABLE tx_test (id TEXT PRIMARY KEY, v TEXT NOT NULL)");
 	// success path commits
 	const committed = withTransaction(store.db, () => {
@@ -150,7 +152,7 @@ test("transaction compat layer: commit on success, rollback on error", (t) => {
 
 test("journal sources: 25 built-in, upsert idempotent, sync log + prune guard", (t) => {
 	const dir = makeTempDir(t);
-	const store = new ResearchStore(dir);
+	const store = new ResearchStore(dir, { seedDemoData: true });
 	const sources = [
 		{ id: "emotion", venue: "Emotion", issn: "1528-3542", topic: "情绪与健康" },
 		{ id: "psych-science", venue: "Psychological Science", issn: "0956-7976", topic: "认知与学习" },
@@ -176,7 +178,7 @@ test("journal sources: 25 built-in, upsert idempotent, sync log + prune guard", 
 
 test("topic subscriptions: subscribe, list, unsubscribe", (t) => {
 	const dir = makeTempDir(t);
-	const store = new ResearchStore(dir);
+	const store = new ResearchStore(dir, { seedDemoData: true });
 	store.subscribeTopic({ topic: "情绪调节", keywords: "emotion regulation", journalIds: ["emotion"] });
 	assert.equal(store.listTopicSubscriptions().length, 1);
 	store.subscribeTopic({ topic: "反刍" });
@@ -188,7 +190,7 @@ test("topic subscriptions: subscribe, list, unsubscribe", (t) => {
 
 test("audit log: agent tool call row with bounded params", (t) => {
 	const dir = makeTempDir(t);
-	const store = new ResearchStore(dir);
+	const store = new ResearchStore(dir, { seedDemoData: true });
 	store.auditAgentToolCall("test_tool", { a: 1, secret: "x".repeat(500) }, { sessionId: "s1", agentId: "a1" });
 	const row = store.db.prepare("SELECT * FROM research_audit_log ORDER BY id DESC LIMIT 1").get();
 	assert.equal(row.action, "agent.tool.invoke");
@@ -201,7 +203,7 @@ test("audit log: agent tool call row with bounded params", (t) => {
 
 test("persistence: reopen same dir keeps data; getResearchStore cache reuse", (t) => {
 	const dir = makeTempDir(t);
-	const first = new ResearchStore(dir);
+	const first = new ResearchStore(dir, { seedDemoData: true });
 	const project = first.createProject({ title: "持久化项目" });
 	first.close();
 	clearResearchStoreCache();
@@ -213,7 +215,7 @@ test("persistence: reopen same dir keeps data; getResearchStore cache reuse", (t
 
 test("upsertSearchResult: DOI dedupe reuses id, preserves favorite", (t) => {
 	const dir = makeTempDir(t);
-	const store = new ResearchStore(dir);
+	const store = new ResearchStore(dir, { seedDemoData: true });
 	const record = {
 		source: "openalex", sourceId: "w-x", doi: "10.9999/dup", title: "标题A", authors: "B",
 		venue: "V", year: 2023, abstract: "", topic: "", pdfUrl: null, sourceUrl: "", sourceName: "期刊同步",
@@ -228,7 +230,7 @@ test("upsertSearchResult: DOI dedupe reuses id, preserves favorite", (t) => {
 
 test("duplicate review: normalized DOI detection, ignore, merge and immediate undo", (t) => {
 	const dir = makeTempDir(t);
-	const store = new ResearchStore(dir);
+	const store = new ResearchStore(dir, { seedDemoData: true });
 	const project = store.createProject({ title: "去重测试" });
 	const base = {
 		source: "crossref", authors: "Gross, J. J.; John, O. P.", venue: "Emotion", year: 2024,
@@ -266,7 +268,7 @@ test("duplicate review: normalized DOI detection, ignore, merge and immediate un
 
 test("duplicate merge blocks conflicting DOI and dual summary documents", (t) => {
 	const dir = makeTempDir(t);
-	const store = new ResearchStore(dir);
+	const store = new ResearchStore(dir, { seedDemoData: true });
 	const a = store.upsertSearchResult({ id: "conflict-a", source: "x", sourceId: "a", doi: "10.1/a", title: "Same title", authors: "A", year: 2024 });
 	const b = store.upsertSearchResult({ id: "conflict-b", source: "x", sourceId: "b", doi: "10.1/b", title: "Same title", authors: "A", year: 2024 });
 	assert.throws(() => store.mergeDuplicatePapers(a.id, b.id), error => error.code === "PAPER_MERGE_DOI_CONFLICT");

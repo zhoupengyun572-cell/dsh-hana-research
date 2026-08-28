@@ -24,7 +24,7 @@ import {
 
 function makeStore(t, dirName = "hana-v12-") {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), dirName));
-  const store = new ResearchStore(dir);
+  const store = new ResearchStore(dir, { seedDemoData: true });
   t.after(() => {
     clearResearchStoreCache();
     store.close();
@@ -293,7 +293,7 @@ test("annotations-v2: replace/list roundtrip keeps legacy notes link", (t) => {
 
 test("schema v12 migration is idempotent and preserves legacy subtype backfill", (t) => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "hana-v12-mig-"));
-  const store1 = new ResearchStore(dir);
+  const store1 = new ResearchStore(dir, { seedDemoData: true });
   assert.equal(RESEARCH_SCHEMA_VERSION, 19);
   const meta = store1.db.prepare("SELECT value FROM research_meta WHERE key='schema_version'").get();
   assert.equal(meta.value, "19");
@@ -312,7 +312,7 @@ test("schema v12 migration is idempotent and preserves legacy subtype backfill",
   `).run(project.id, up.attachment.id);
   store1.close();
   // 重新打开（第二次迁移运行）：幂等
-  const store2 = new ResearchStore(dir);
+  const store2 = new ResearchStore(dir, { seedDemoData: true });
   const legacy = store2.db.prepare("SELECT subtype FROM annotations WHERE id = 'legacy-1'").get();
   assert.equal(legacy.subtype, "square");
   const version = store2.db.prepare("SELECT value FROM research_meta WHERE key='schema_version'").get();

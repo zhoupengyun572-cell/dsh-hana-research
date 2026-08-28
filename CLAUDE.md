@@ -25,7 +25,6 @@
 ## 部署说明
 
 - 开发目录：本目录。
-- 当前运行副本：`C:\Users\zhou\.dsh\profiles\node_modules\@local\dsh-hana-research`。
-- 同步运行副本前先在 `C:\Users\zhou\.codex\backups\dsh-hana-research\` 建可恢复备份。
+- 当前开发运行副本位于 `$DSH_HOME/profiles/node_modules/` 对应的本地插件目录。
+- 同步运行副本前先在 `$CODEX_HOME/backups/dsh-hana-research/` 建可恢复备份。
 - 静态资源可由新页面直接读取；宿主工具、事件和系统提示变更需要重启 Harness，未经用户同意不要擅自关闭应用。
-

@@ -26,7 +26,7 @@ const HERE = path.dirname(fileURLToPath(import.meta.url));
 
 function makeStore(t) {
 	const dir = fs.mkdtempSync(path.join(os.tmpdir(), "hana-compat-"));
-	const store = new ResearchStore(dir);
+	const store = new ResearchStore(dir, { seedDemoData: true });
 	t.after(() => {
 		clearResearchStoreCache();
 		store.close();
@@ -137,7 +137,7 @@ test("read-only tool executes without approval (list_research_projects)", async 
 	assert.equal(host.approvalCalls.length, 0);
 	const value = await runExec(def, {});
 	assert.equal(typeof value.text, "string");
-	assert.ok(value.text.includes("青少年情绪应对"));
+	assert.ok(value.text.includes("示例：情绪调节文献综述"));
 	assert.equal(host.approvalCalls.length, 0, "read tool never asks approval");
 	host.disposeAll();
 });

@@ -43,3 +43,23 @@ test("public documentation reports the current release and schema", () => {
 		assert.match(document, new RegExp(`schema (?:v)?${RESEARCH_SCHEMA_VERSION}`, "i"));
 	}
 });
+
+test("community runtime and public docs do not expose author-local paths", () => {
+	const publicFiles = [
+		"README.md",
+		"docs/COMMUNITY_RELEASE_PLAN.md",
+		"docs/PLUGIN_OVERVIEW.md",
+		"docs/USER_GUIDE.md",
+		"lib/index.js",
+		"lib/store.js",
+		"package.json",
+	];
+	for (const relativePath of publicFiles) {
+		const content = fs.readFileSync(path.join(ROOT, relativePath), "utf8");
+		assert.doesNotMatch(content, /C:\\Users\\zhou/i, `${relativePath} contains an author-local path`);
+		assert.doesNotMatch(content, /@local\/dsh-hana-research/i, `${relativePath} contains the development package name`);
+		assert.doesNotMatch(content, /Chat-SJT|青少年情绪应对/i, `${relativePath} contains an author project`);
+	}
+	const hostEntry = fs.readFileSync(path.join(ROOT, "lib/index.js"), "utf8");
+	assert.doesNotMatch(hostEntry, /dbPath:\s*store\.dbPath/, "health payload must not expose the absolute database path");
+});

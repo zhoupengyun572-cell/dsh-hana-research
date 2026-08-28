@@ -218,7 +218,7 @@ HanaResearch
 - **可追溯**：每份 PDF 保留来源、SHA-256 哈希与导入时间；所有写入操作写审计日志（`agent tool calls` / `note.*` / `project.*` 等）。
 - **备份 / 回滚**：
   - schema 升级前自动保留数据库快照（`.bak-v<版本>-*`）；
-  - 插件更新/安装前建议手动备份 `C:\Users\zhou\.dsh\profiles\node_modules\@local\dsh-hana-research\` 与 `cordis.patch.yml`；
+  - 插件更新前建议备份 `$DSH_HOME/plugin-data/hana-research/`；标准 `dsh plugin update/remove` 只管理插件包与 bundle 配置层，不会主动删除研究数据；
   - 若插件条目失败只标记该 entry FAILED，不影响应用启动。
 - **重启用例**：宿主导 `lib/` 变更（新接口 / 数据层）需要重启 Harness 生效；前端资源（`assets/*.js|css`）是免缓存磁盘读取，刷新对应页面即可。
 
