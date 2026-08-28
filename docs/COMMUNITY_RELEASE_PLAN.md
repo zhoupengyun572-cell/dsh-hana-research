@@ -19,7 +19,7 @@
 - [x] `dsh plugin --profile web add <specifier>` 可在全新 Profile 一次安装并自动激活（本地 `.tgz` 候选包已验证；公开 specifier 待 R8）。
 - [x] 更新、卸载和重新安装可正确维护 bundle 配置层，且卸载不删除独立研究数据目录。
 - [x] 新用户默认使用空白数据库；作者项目与文献种子仅允许显式测试/开发 opt-in。
-- [ ] 发布包具有明确文件白名单，不包含 `archive/`、`memory/`、测试截图或协作文件。
+- [x] 发布包具有明确文件白名单，不包含 `archive/`、`memory/`、测试截图或协作文件。
 - [ ] 直接依赖、peer 依赖、Node 与 Harness 兼容范围完整声明。
 - [ ] 生产依赖无已知高危/严重漏洞；中低风险均有处理或书面说明。
 - [ ] PDF 下载重定向、响应体积、路径访问和 API 暴露完成安全验证。
@@ -58,6 +58,8 @@
 
 验收：`npm pack --dry-run` 文件表全部可解释，压缩包目标不超过 30 MB。
 
+状态：已完成。`files` 白名单仅保留 `lib`、`assets`、`docs`、`cordis.patch.yml`、`tools/` 内 21 个运行时 Agent 工具模块（`lib/register-tools.js` 导入的集合）、README 与第三方许可清单。移除未使用的 3 个 Noto 字重（约 24 MB）与旧版 pdf.js 阅读器全部资产（`pdfjs-app` 约 12 MB、`pdfjs-viewer` 约 6 MB、对应桥接与路由）；阅读工作区自 v12 起为唯一入口，工作台字体回退仅自托管 Regular/Bold 两个字重。候选包压缩后 18.5 MB（此前约 63 MB）；`npm pack --dry-run` 共 63 个文件且全部可解释。发布元数据测试新增白名单、体积门槛、运行时工具完整性回归与旧资产禁入校验。
+
 ### R4：依赖与兼容
 
 声明 Node、Harness、`dsh-tools` 兼容范围；消除本机软链接依赖；完成干净依赖安装与多版本启动验证。
@@ -91,7 +93,7 @@
 ## 当前已知风险基线
 
 - 标准 bundle 与正式包名已在 R1 完成；公开 npm/GitHub specifier 待 R8。
-- 当前发布包约 63 MB（压缩）/86 MB（解压），混入历史档案和开发文件。
+- 发布包已完成瘦身（R3）：`files` 白名单 + 旧 pdf.js 清理后压缩 18.5 MB；`tools/` 中 6 个开发脚本与 `shots/` 截图目录不进入发布包。
 - 作者项目种子已改为显式测试/开发 opt-in；运行时默认空数据库。
 - `@deepseek-ai/dsh-tools` 被直接导入但未在发布 manifest 声明。
 - 生产依赖存在一项中等级别间接依赖告警。

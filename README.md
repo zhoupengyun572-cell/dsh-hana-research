@@ -31,7 +31,7 @@
 三栏 Zotero 式文献阅读：左侧（目录/缩略图/搜索/批注列表，可折叠可调宽）· 中央 EmbedPDF（渲染/缩放/连续滚动/选择/高亮/下划线/删除线/便签/评论/自由文本/批注侧栏/深浅色/进度恢复/批注导入导出/导出带批注 PDF）· 右侧 Tiptap 文献笔记（标题/列表/任务/引用/代码/链接/表格/撤销重做/Markdown 导入导出/自动保存/字数/引文卡片一键跳回原文）。
 
 入口不变：项目抽屉「打开阅读器」→ `/ui/hana-research/reader?projectId&attachmentId`。
-旧官方 pdf.js viewer 保留为不可见回退：`/ui/hana-research/reader-legacy`（新模块稳定后清理）。
+旧官方 pdf.js viewer 回退（`/reader-legacy`）已随社区发布瘦身移除（v12 起工作区即为唯一默认入口）。
 
 ## 研究资料导出（v29）
 
