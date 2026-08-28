@@ -1,4 +1,4 @@
-// 兼容性验证（dsh-tools 0.1.0-rc.9，运行于 profile 环境）：
+// 兼容性验证（当前开发基线 dsh-tools 0.1.0-rc.13，运行于 profile 环境）：
 //   1) defineTool 编译全部 20 个工具（参数 + output）不抛错；
 //   2) parameterSchemaSpecToJsonSchema 输出结构正确（嵌套 object/array/required）；
 //   3) validateArgs 对非法参数拒绝；
@@ -85,7 +85,7 @@ test("defineTool compiles all 20 tools with parameters + output", (t) => {
 	for (const def of host.registered) {
 		assert.ok(def.name.startsWith("hana_research_"), def.name);
 		assert.equal(typeof def.description, "string");
-		// output 声明存在（rc.9 契约）
+		// output 声明存在（当前 rc 契约）
 		assert.ok(def.output, `${def.name} has output`);
 		assert.ok(def.output.schema, `${def.name} output.schema`);
 		assert.equal(typeof def.output.render, "function", `${def.name} output.render`);

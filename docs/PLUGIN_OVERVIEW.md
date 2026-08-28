@@ -1,7 +1,7 @@
 # Hana Research · 当前插件关键内容总览（Overview）
 
 > 面向维护者/使用者的「当前状态 + 目录索引」汇总；与 `docs/USER_GUIDE.md`（使用向）互补。
-> 最后一版更新：2026-08-20（含 P6 研究驾驶舱/结构化证据/副驾驶/闭环/设置迭代）。
+> 最后一版更新：2026-08-28（社区发布准备基线 0.4.0-beta.1）。
 
 ## 1. 一句话定位
 
@@ -12,9 +12,9 @@
 | 项 | 值 |
 |---|---|
 | 包名 | `@local/dsh-hana-research`（`package.json` → `lib/index.js`，client 平台 web） |
-| 数据库 | SQLite WAL，schema 版本 **v13**（`$DSH_HOME/plugin-data/hana-research/research.db`） |
-| 前端资产版本 | `ASSET_VERSION = "v18"`（`lib/pages.js`，升级资源强制刷新缓存） |
-| 自动化测试 | `tests/*.test.mjs` **109/109** 通过；`web/tests/markdown.test.mjs` **7/7** 通过 |
+| 数据库 | SQLite WAL，schema 版本 **v19**（`$DSH_HOME/plugin-data/hana-research/research.db`） |
+| 前端资产版本 | 与 `HANA_RELEASE_VERSION` 共用 **0.4.0-beta.1**（`lib/pages.js`，升级资源强制刷新缓存） |
+| 自动化测试 | `tests/*.test.mjs` **156/156** 通过；`web/tests/markdown.test.mjs` **7/7** 通过 |
 | 当前验证套件 | `tools/{button-audit, verify-cockpit, verify-evidence-closure, verify-shortcuts, walk-workbench-buttons}.mjs` |
 | 部署目标 | `C:\Users\zhou\.dsh\profiles\node_modules\@local\dsh-hana-research\`（+ `cordis.patch.yml` 挂载） |
 
@@ -49,7 +49,7 @@ dsh-hana-research/
 | Agent 协作 | 各处「交给 Agent」 + 副驾驶 | 20 个工具；只读可主动用，写入需确认+宿主审批+审计；接力进草稿由用户发送；project-overview/brief/news cards |
 | 设置个性化 | 顶栏齿轮 | 专注模式、信息密度、动效强度(支持 prefers-reduced-motion)、默认项目、Agent 写策略、快捷键开关 |
 
-## 5. 数据模型要点（schema v13）
+## 5. 数据模型要点（schema v19）
 
 - 核心表：`projects` / `papers` / `project_papers`(角色) / `attachments` / `annotations`(批注) / `notes`(项目笔记+任务) / `sentence_notes`(逐句笔记+结构化证据) / `paper_note_documents`(汇总笔记) / `note_citations`(引文) / `note_categories` / `note_tag_colors` / `paper_reading_state` / `paper_relations`(论证关系) / `saved_searches` / `collections` / `translation_docs` / `journal_sources` / `journal_sync_logs` / `topic_subscriptions` / `meta` + 审计表。
 - 结构化证据存于 `sentence_notes.position_json.__evidence`（复用既有列，无独立迁移）。

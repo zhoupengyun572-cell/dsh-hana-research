@@ -108,7 +108,7 @@
        - id: hana-research
          name: '@local/dsh-hana-research'
    ```
-4. 重启 DeepSeek Harness（首次启动自动执行 schema v15 迁移；从 v14 升级前会自动保留 `.bak-v15-*` 快照，旧批注在新阅读器打开对应 PDF 时自动换算导入）
+4. 重启 DeepSeek Harness（首次启动自动迁移到当前 schema v19；跨版本升级会在需要时保留迁移前快照，旧批注在新阅读器打开对应 PDF 时自动换算导入）
 
 ## 前端构建（阅读工作区改版时）
 
@@ -123,12 +123,12 @@ npm run dev            # watch 模式
 
 - 数据层测试：`node tests/store.test.mjs` 等全部 `tests/*.test.mjs`（node:test，临时目录自动清理）
 - 前端单元：`cd web; node tests/markdown.test.mjs`
-- 重启后：`GET /api/hana-research/health` 应返回 `{ok:true, releaseVersion:"v37", schemaVersion:19, ...}`
-- 数据目录：`$DSH_HOME/plugin-data/hana-research/research.db`（WAL，schema v15）
+- 重启后：`GET /api/hana-research/health` 应返回 `{ok:true, releaseVersion:"0.4.0-beta.1", schemaVersion:19, ...}`
+- 数据目录：`$DSH_HOME/plugin-data/hana-research/research.db`（WAL，schema v19）
 
 ## 回滚
 
 1. `cordis.patch.yml` 删除 `hana-research` 条目（还原备份）
 2. 删除 `C:\Users\zhou\.dsh\profiles\node_modules\@local\dsh-hana-research\`
 3. 重启应用。插件失败只会标记该 entry FAILED，不影响应用启动。
-4. 数据回滚：schema v15 以新增表为主，旧表结构保留；如需回退，用迁移前快照 `research.db.bak-v15-*` 覆盖 `research.db`（先停服）。
+4. 数据回滚：先停止 Harness，再使用对应迁移前快照 `research.db.bak-v*` 覆盖数据库；不要跨 schema 直接用旧代码写入新数据库。
