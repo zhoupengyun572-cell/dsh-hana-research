@@ -33,7 +33,7 @@ The Git tag is intentionally pinned. You can also download the `.tgz` and SHA-25
 ## Compatibility
 
 - **Node ≥ 22.13.0** (the floor where `node:sqlite` loads without a flag). At runtime the Node binary ships with the Harness desktop app; verified on Windows + Node 24.15. Other Node versions and macOS/Linux are untested.
-- **Harness developer preview**, baseline `@deepseek-ai/dsh-tools 0.1.0-rc.13`. `defineTool` is provided by the host; the plugin declares it as an *optional* peer dependency (`^0.1.0-rc.13`) because that exact build is not on public npm.
+- **Harness developer preview**, verified on host baseline `@deepseek-ai/dsh-tools 0.1.0-rc.13`. `defineTool` is provided by the host; the plugin declares an optional peer range `>=0.1.0-rc.13 <0.2.0`, while public CI uses the registry-available `0.1.1-rc.2` for forward-compatibility testing.
 - **Production dependencies**: `docx`, `exceljs`, `pdfkit` only. Known residual risk: a moderate audit finding via `exceljs → uuid@8.3.2`, pending an upstream fix (see [SECURITY.md](SECURITY.md)).
 
 ## Data & privacy

@@ -13,30 +13,29 @@ jobs:
         node: [22, 24]
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: ${{ matrix.node }}
       - name: Install root dependencies
-        run: npm install
+        run: npm ci
+      - name: Install reader test dependencies
+        run: npm ci --prefix web
       - name: Full Node test suite
         run: node scripts/run-tests.mjs
       - name: Editor frontend tests
-        run: |
-          cd web
-          npm ci
-          node --test tests/markdown.test.mjs
+        run: node --test web/tests/markdown.test.mjs
 
   package:
     runs-on: ubuntu-latest
     needs: test
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: 24
       - name: Install root dependencies
-        run: npm install
+        run: npm ci
       - name: Pack candidate and checksum
         run: |
           npm pack --pack-destination output
