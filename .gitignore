@@ -1,0 +1,18 @@
+# 依赖（可由 package.json / lockfile 恢复）
+node_modules/
+
+# 运行时临时产物
+.playwright-cli/
+output/
+work/node_modules/
+work/qa-export-data/
+*.log
+*.tmp
+.DS_Store
+Thumbs.db
+
+# 本地数据库文件（正式数据在 $DSH_HOME/plugin-data 下，不在仓库内）
+*.db
+*.db-wal
+*.db-shm
+*.bak-v*

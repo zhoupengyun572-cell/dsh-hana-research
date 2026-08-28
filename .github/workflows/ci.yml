@@ -1,0 +1,51 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        node: [22, 24]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+      - name: Install root dependencies
+        run: npm install
+      - name: Full Node test suite
+        run: node scripts/run-tests.mjs
+      - name: Editor frontend tests
+        run: |
+          cd web
+          npm ci
+          node --test tests/markdown.test.mjs
+
+  package:
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Install root dependencies
+        run: npm install
+      - name: Pack candidate and checksum
+        run: |
+          npm pack --pack-destination output
+          ls output/*.tgz
+          sha256sum output/*.tgz > output/dsh-hana-research-checksums.sha256
+          cat output/dsh-hana-research-checksums.sha256
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dsh-hana-research-candidate
+          path: |
+            output/*.tgz
+            output/*.sha256

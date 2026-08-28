@@ -1,0 +1,87 @@
+{
+  "name": "dsh-hana-research",
+  "version": "0.4.0-beta.1",
+  "description": "Hana Research for DeepSeek Harness: literature discovery, journal tracking, project libraries, PDF reading and research notes.",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/zhoupengyun572-cell/dsh-hana-research.git"
+  },
+  "homepage": "https://github.com/zhoupengyun572-cell/dsh-hana-research#readme",
+  "bugs": {
+    "url": "https://github.com/zhoupengyun572-cell/dsh-hana-research/issues"
+  },
+  "keywords": [
+    "deepseek-harness",
+    "dsh-plugin",
+    "literature-review",
+    "academic-research",
+    "pdf-annotation"
+  ],
+  "type": "module",
+  "main": "lib/index.js",
+  "files": [
+    "lib",
+    "assets",
+    "docs/PLUGIN_OVERVIEW.md",
+    "docs/USER_GUIDE.md",
+    "cordis.patch.yml",
+    "tools/_shared.js",
+    "tools/add-paper-to-project.js",
+    "tools/complete-project-task.js",
+    "tools/create-project-note.js",
+    "tools/create-project-task.js",
+    "tools/delete-project-note.js",
+    "tools/edit-project-note.js",
+    "tools/get-project-brief.js",
+    "tools/get-reader-context.js",
+    "tools/get-research-context.js",
+    "tools/list-project-tasks.js",
+    "tools/list-research-projects.js",
+    "tools/list-subscriptions.js",
+    "tools/list-tags.js",
+    "tools/read-project-notes.js",
+    "tools/report-journal-updates.js",
+    "tools/save-search-result.js",
+    "tools/search-literature.js",
+    "tools/search-project-papers.js",
+    "tools/subscribe-topic.js",
+    "tools/unsubscribe-topic.js",
+    "SECURITY.md",
+    "README.md",
+    "README.en.md",
+    "CHANGELOG.md",
+    "CONTRIBUTING.md",
+    "LICENSE",
+    "THIRD_PARTY_LICENSES.md"
+  ],
+  "exports": {
+    ".": "./lib/index.js",
+    "./client": "./lib/client.js",
+    "./package.json": "./package.json"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web"
+    }
+  },
+  "license": "MIT",
+  "engines": {
+    "node": ">=22.13.0"
+  },
+  "dependencies": {
+    "docx": "^9.7.1",
+    "exceljs": "^4.4.0",
+    "pdfkit": "^0.20.1"
+  },
+  "peerDependencies": {
+    "@deepseek-ai/dsh-tools": "^0.1.0-rc.13"
+  },
+  "peerDependenciesMeta": {
+    "@deepseek-ai/dsh-tools": {
+      "optional": true
+    }
+  }
+}

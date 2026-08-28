@@ -1,0 +1,36 @@
+{
+  "name": "dsh-hana-research-web",
+  "version": "0.4.0-beta.1",
+  "private": true,
+  "type": "module",
+  "description": "阅读工作区前端构建子项目：EmbedPDF + Tiptap，esbuild 打包为插件静态资产。",
+  "scripts": {
+    "build": "node build.mjs",
+    "dev": "node build.mjs --watch"
+  },
+  "dependencies": {
+    "@embedpdf/fonts-sc": "1.0.0",
+    "@embedpdf/models": "2.15.0",
+    "@embedpdf/react-pdf-viewer": "2.15.0",
+    "@tiptap/core": "3.30.1",
+    "@tiptap/extension-link": "3.30.1",
+    "@tiptap/extension-placeholder": "3.30.1",
+    "@tiptap/extension-table": "3.30.1",
+    "@tiptap/extension-table-cell": "3.30.1",
+    "@tiptap/extension-table-header": "3.30.1",
+    "@tiptap/extension-table-row": "3.30.1",
+    "@tiptap/extension-task-item": "3.30.1",
+    "@tiptap/extension-task-list": "3.30.1",
+    "@tiptap/extension-underline": "3.30.1",
+    "@tiptap/markdown": "3.30.1",
+    "@tiptap/pm": "3.30.1",
+    "@tiptap/react": "3.30.1",
+    "@tiptap/starter-kit": "3.30.1",
+    "react": "18.3.1",
+    "react-dom": "18.3.1"
+  },
+  "devDependencies": {
+    "esbuild": "0.28.2",
+    "happy-dom": "^20.11.2"
+  }
+}
