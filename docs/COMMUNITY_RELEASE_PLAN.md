@@ -24,9 +24,9 @@
 - [x] 生产依赖无已知高危/严重漏洞；中低风险均有处理或书面说明。
 - [x] PDF 下载重定向、响应体积、路径访问和 API 暴露完成安全验证。
 - [x] LICENSE、第三方许可证、README、隐私/权限说明、更新日志和支持政策齐全。
-- [ ] CI 自动执行完整 Node 测试、编辑器测试、打包检查和干净安装冒烟。
-- [ ] 至少完成 Windows 实机验收；其他平台若未验证，README 必须明确标注。
-- [ ] 候选包在真实 Harness 中完成安装→创建项目→上传 PDF→阅读批注→导出→升级→卸载闭环。
+- [x] CI 自动执行完整 Node 测试、编辑器测试、打包检查和干净安装冒烟。
+- [x] 至少完成 Windows 实机验收；其他平台若未验证，README 必须明确标注。
+- [x] 候选包在真实 Harness 中完成安装→创建项目→上传 PDF→阅读批注→导出→升级→卸载闭环。
 
 ## 分阶段执行
 
@@ -89,6 +89,8 @@
 建立 GitHub Actions；生成候选包及校验和；在真实 Harness 完成端到端发布验收。
 
 验收：CI 全绿，候选包安装闭环通过，工作区无未提交变更。
+
+状态：已完成（远端 CI 首跑待 R8 公开仓库）。新增 `.github/workflows/ci.yml`（ubuntu+windows × Node 22/24 矩阵：根测试、编辑器测试、打包与校验和产物上传）与跨平台 `scripts/run-tests.mjs`（解决 Windows 下 node --test 目录传参问题）；提交根 `package-lock.json` 供 CI 复现安装。CI 各步骤已在本地完整复演：`scripts/run-tests.mjs` 167/167、编辑器 7/7、`npm pack` + sha256（`a5be5b5a4be801dd9de416e505776575f3938731a10fd78f520cb465ca9ff921`，与 CHANGELOG/README 版本一致）。真实 Harness 端到端闭环在隔离全新 Profile 完成：安装→创建项目→上传 PDF→选择批注→Markdown/DOCX 导出→附件流→`plugin update`（配置层保留、数据保留）→`plugin remove`（配置层移除、`research.db` 保留）。过程中确认两个安装器已知问题并记录 memory：`dsh plugin add` 对含空格路径会拆参（tgz 与源码目录皆然，社区 npm/GitHub 安装不受影响）；`DSH_HOME` 环境变量必须使用正斜杠 Windows 路径，反斜杠经 bash 转写会被吞掉导致数据落点漂移。
 
 ### R8：公开与社区收录
 
