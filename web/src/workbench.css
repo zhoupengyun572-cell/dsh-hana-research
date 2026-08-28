@@ -367,6 +367,7 @@ button.wb-note-save.wb-note-error:hover { background: color-mix(in srgb, var(--w
   backdrop-filter: blur(3px);
   -webkit-app-region: no-drag;
 }
+.wb-overlay-front { z-index: 340; }
 .wb-overlay-panel {
   width: min(380px, 94%);
   padding: 18px 20px;
@@ -378,7 +379,7 @@ button.wb-note-save.wb-note-error:hover { background: color-mix(in srgb, var(--w
 .wb-overlay-panel header svg { color: var(--wb-danger); }
 .wb-overlay-panel p { margin: 10px 0 14px; color: var(--wb-text-muted); font-size: 12px; line-height: 1.7; }
 .wb-overlay-actions { display: flex; justify-content: flex-end; gap: 8px; flex-wrap: wrap; }
-.wb-btn-primary, .wb-btn-plain {
+.wb-btn-primary, .wb-btn-plain, .wb-btn-danger {
   height: 30px; padding: 0 14px;
   border-radius: 7px; font-size: 12px; font-weight: 600; cursor: pointer;
   display: inline-flex; align-items: center; gap: 5px;
@@ -387,6 +388,8 @@ button.wb-note-save.wb-note-error:hover { background: color-mix(in srgb, var(--w
 .wb-btn-primary:hover { background: color-mix(in srgb, var(--wb-accent) 88%, var(--wb-text)); }
 .wb-btn-plain { border: 1px solid var(--wb-border); background: var(--wb-bg-layer); color: var(--wb-text); }
 .wb-btn-plain:hover { border-color: var(--wb-border-strong); background: var(--wb-hover); }
+.wb-btn-danger { border: 1px solid var(--wb-danger); background: var(--wb-danger); color: #fff; }
+.wb-btn-danger:hover { background: color-mix(in srgb, var(--wb-danger) 86%, var(--wb-text)); }
 
 /* ── 窄窗口：右栏变抽屉（随主面板滚动区域整体切换） ── */
 .wb-narrow .wb-right { position: absolute; right: 0; top: 0; bottom: 0; z-index: 20; box-shadow: -14px 0 36px color-mix(in srgb, var(--wb-text) 14%, transparent); }
@@ -653,7 +656,7 @@ button.wb-note-save.wb-note-error:hover { background: color-mix(in srgb, var(--w
 /* 缩略图 */
 .wb-thumbs { flex: 1; min-height: 0; overflow-y: auto; padding: 8px; display: flex; flex-direction: column; gap: 8px; }
 .wb-thumb {
-  position: relative;
+  position: relative; flex: none;
   border: 1px solid var(--wb-border);
   border-radius: var(--wb-radius);
   background: var(--wb-bg);
@@ -672,8 +675,9 @@ button.wb-note-save.wb-note-error:hover { background: color-mix(in srgb, var(--w
   color: var(--wb-text-muted);
 }
 .wb-thumb:hover { border-color: var(--wb-accent); }
+.wb-thumb.active { border-color: var(--wb-accent); box-shadow: 0 0 0 2px var(--wb-accent-soft); }
 .wb-thumb-placeholder {
-  display: flex; height: 60px;
+  display: flex; height: 112px;
   align-items: center; justify-content: center;
   color: var(--wb-text-muted); font-size: 11px;
 }
@@ -707,8 +711,33 @@ button.wb-note-save.wb-note-error:hover { background: color-mix(in srgb, var(--w
 .wb-search-result span { font-size: 10.5px; color: var(--wb-text); line-height: 1.5; max-height: 46px; overflow: hidden; }
 .wb-search-result:hover, .wb-search-result.active { border-color: var(--wb-accent); background: var(--wb-accent-soft); }
 
-/* 目录 */
-.wb-outline { flex: 1; overflow-y: auto; padding: 8px; }
+/* 文档大纲树 */
+.wb-outline { flex: 1; min-height: 0; overflow-y: auto; padding: 8px 6px 14px; }
+.wb-outline-head { display: flex; align-items: center; justify-content: space-between; padding: 3px 7px 8px; }
+.wb-outline-head strong { font-size: 11.5px; }
+.wb-outline-head span { color: var(--wb-text-muted); font-size: 10px; }
+.wb-outline-tree { list-style: none; margin: 0; padding: 0; }
+.wb-outline-row {
+  display: flex; align-items: center; min-height: 28px;
+  padding-left: calc(var(--outline-depth) * 12px);
+  border-radius: 6px;
+}
+.wb-outline-row:hover { background: var(--wb-hover); }
+.wb-outline-row.active { background: var(--wb-selected); color: var(--wb-accent); }
+.wb-outline-toggle, .wb-outline-leaf { width: 22px; height: 24px; flex: none; }
+.wb-outline-toggle {
+  display: inline-flex; align-items: center; justify-content: center;
+  border: 0; border-radius: 5px; background: transparent; color: var(--wb-text-muted); cursor: pointer;
+}
+.wb-outline-toggle[aria-expanded="false"] svg { transform: rotate(-90deg); }
+.wb-outline-link {
+  flex: 1; min-width: 0; display: flex; align-items: center; gap: 6px;
+  padding: 5px 6px 5px 0; border: 0; background: transparent; color: inherit;
+  text-align: left; font-size: 11px; line-height: 1.45; cursor: pointer;
+}
+.wb-outline-link:disabled { cursor: default; opacity: .72; }
+.wb-outline-link span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wb-outline-link em { color: var(--wb-text-muted); font-size: 9.5px; font-style: normal; }
 
 /* ── 选择工具条 ─────────────────────────────── */
 .wb-selection-toolbar {
@@ -732,6 +761,25 @@ button.wb-note-save.wb-note-error:hover { background: color-mix(in srgb, var(--w
 }
 .wb-selection-toolbar button:hover { background: var(--wb-hover); color: var(--wb-accent); }
 .wb-tb-divider { width: 1px; height: 16px; background: var(--wb-border); margin: 0 3px; }
+
+/* 画布批注轻量浮层 */
+.wb-annotation-peek {
+  position: fixed; z-index: 180; width: 248px;
+  padding: 9px; border: 1px solid var(--wb-border-strong); border-radius: 10px;
+  background: var(--wb-bg-layer); color: var(--wb-text);
+  box-shadow: 0 10px 32px color-mix(in srgb, var(--wb-text) 22%, transparent);
+  animation: wb-pop 120ms ease-out both;
+}
+.wb-annotation-peek header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+.wb-annotation-peek header strong { font-size: 11px; }
+.wb-annotation-peek header button { border: 0; background: transparent; color: var(--wb-text-muted); cursor: pointer; font-size: 15px; }
+.wb-annotation-peek-colors { display: flex; gap: 7px; padding: 3px 1px 9px; }
+.wb-annotation-peek-colors button { width: 22px; height: 22px; border: 1px solid var(--wb-border); border-radius: 50%; cursor: pointer; }
+.wb-annotation-peek-colors button.active { outline: 2px solid var(--wb-accent); outline-offset: 2px; }
+.wb-annotation-peek-actions { display: flex; justify-content: flex-end; gap: 6px; padding-top: 7px; border-top: 1px solid var(--wb-border); }
+.wb-annotation-peek-actions button { display: inline-flex; align-items: center; gap: 4px; height: 25px; padding: 0 8px; border: 1px solid var(--wb-border); border-radius: 6px; background: var(--wb-bg); color: var(--wb-text); font-size: 10.5px; cursor: pointer; }
+.wb-annotation-peek-actions button:hover { border-color: var(--wb-accent); color: var(--wb-accent); }
+.wb-annotation-peek-actions button.danger:hover { border-color: var(--wb-danger); color: var(--wb-danger); }
 
 @keyframes wb-pop {
   from { opacity: 0; transform: translateY(4px); }
@@ -1089,6 +1137,21 @@ button.wb-note-save.wb-note-error:hover { background: color-mix(in srgb, var(--w
   color: var(--wb-text-muted); font-size: 16px; line-height: 1; cursor: pointer;
 }
 .wb-overlay-close:hover { color: var(--wb-danger); }
+
+.wb-input-dialog { width: min(430px, 94%); }
+.wb-input-dialog form { display: grid; gap: 8px; margin-top: 13px; }
+.wb-input-dialog label { color: var(--wb-text-muted); font-size: 11px; font-weight: 600; }
+.wb-input-dialog input, .wb-input-dialog textarea {
+  width: 100%; box-sizing: border-box; outline: none; resize: vertical;
+  border: 1px solid var(--wb-border); border-radius: 7px;
+  background: var(--wb-bg); color: var(--wb-text); padding: 8px 10px;
+  font: inherit; font-size: 12px; line-height: 1.55;
+}
+.wb-input-dialog input { height: 34px; }
+.wb-input-dialog input:focus, .wb-input-dialog textarea:focus {
+  border-color: var(--wb-accent); box-shadow: 0 0 0 3px var(--wb-accent-soft);
+}
+.wb-dialog-error { display: flex; align-items: center; gap: 5px; margin: 0 !important; color: var(--wb-danger) !important; }
 
 .wb-meta-manager { width: min(460px, 94%); max-height: 82vh; display: flex; flex-direction: column; }
 .wb-meta-tabs { display: flex; gap: 4px; margin-top: 10px; border-bottom: 1px solid var(--wb-border); flex: none; }

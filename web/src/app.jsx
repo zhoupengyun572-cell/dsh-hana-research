@@ -9,6 +9,7 @@ import {
 } from './theme.js';
 import { repositories, loadPdfBlobUrl, createSaveQueue } from './services.js';
 import { NoteEditor, createMarkdownConverter, buildExtensions, citationJumpHolder } from './tiptap-config.jsx';
+import { bookmarkPageNumber, countBookmarks, readReaderTheme, writeReaderTheme } from './workspace-utils.js';
 import {
   IconBack, IconOutline, IconThumbnails, IconSearch, IconAnnotations, IconCollapseLeft,
   IconCollapseRight, IconTheme, IconPanelLeft, IconPanelRight, IconDownload, IconCheck, IconAlert,
@@ -98,7 +99,7 @@ function applyNoteFilters(notes, filters) {  const kw = (filters.q || '').trim()
 
 export default function PdfWorkspace({ projectId, attachmentId, paperId, paperTitle, projectTitle }) {
   // ── 主题 ──
-  const [themeMode, setThemeMode] = useState('auto'); // auto | light | dark
+  const [themeMode, setThemeMode] = useState(() => readReaderTheme()); // auto | light | dark
   const [palette, setPalette] = useState(() => paletteFromTokens(readHostTokens()));
   const viewerTheme = useMemo(() => buildViewerTheme(palette, themeMode), [palette, themeMode]);
 
@@ -149,6 +150,7 @@ export default function PdfWorkspace({ projectId, attachmentId, paperId, paperTi
   const [metaManagerOpen, setMetaManagerOpen] = useState(false);
   const sentenceSavesRef = useRef(new Map()); // noteId -> { timer, patch, promise, failed }
   const [confirmBox, setConfirmBox] = useState(null); // 三选一确认（删除笔记等）
+  const [inputBox, setInputBox] = useState(null); // 阅读器统一文本输入弹窗
 
   // ── P6：宿主能力探测（结构化证据依赖宿主更新；旧宿主只读预览，不静默丢数据） ──
   const [caps, setCaps] = useState(null);
@@ -164,6 +166,8 @@ export default function PdfWorkspace({ projectId, attachmentId, paperId, paperTi
   // ── 选择工具条 / AI 解释 ──
   const [selectionMenu, setSelectionMenu] = useState(null); // { placement, text, pageIndex, formatted }
   const [explainBox, setExplainBox] = useState(null); // { text, status, result, anchor }
+  const [annotationPeek, setAnnotationPeek] = useState(null); // { item, x, y }
+  const lastViewerPointer = useRef({ x: window.innerWidth / 2, y: 120 });
   const [toast, setToast] = useState(null);
   const toastTimer = useRef(null);
   const showToast = useCallback((message, isError = false) => {
@@ -302,6 +306,11 @@ export default function PdfWorkspace({ projectId, attachmentId, paperId, paperTi
     return watchHostTheme(update);
   }, []);
 
+  // 用户选择独立于宿主主题保存；受限 iframe/localStorage 不可用时静默退回 auto。
+  useEffect(() => {
+    writeReaderTheme(themeMode);
+  }, [themeMode]);
+
   const activePageRef = useRef(1);
 
   // ── EmbedPDF 就绪：接管 registry / 阅读进度 / legacy 批注 ──
@@ -335,7 +344,7 @@ export default function PdfWorkspace({ projectId, attachmentId, paperId, paperTi
       const firstDoc = Object.keys(docs)[0];
       if (firstDoc) {
         setDocumentId(firstDoc);
-        const pages = docs[firstDoc]?.pages || [];
+        const pages = docs[firstDoc]?.document?.pages || docs[firstDoc]?.pages || [];
         setPageCount(pages.length);
         const sizes = {};
         pages.forEach((page, index) => {
@@ -346,6 +355,19 @@ export default function PdfWorkspace({ projectId, attachmentId, paperId, paperTi
       // 订阅滚动页面变化 → 阅读进度
       try {
         store.subscribe((action, newState) => {
+          const resolvedDocument = newState?.core?.documents?.[firstDoc];
+          const resolvedPages = resolvedDocument?.document?.pages || resolvedDocument?.pages || [];
+          if (resolvedPages.length) {
+            setPageCount(resolvedPages.length);
+            setPageSizes((previous) => {
+              if (Object.keys(previous).length === resolvedPages.length) return previous;
+              const next = {};
+              resolvedPages.forEach((pageInfo, index) => {
+                next[index + 1] = { width: pageInfo?.size?.width || 612, height: pageInfo?.size?.height || 792 };
+              });
+              return next;
+            });
+          }
           const page = newState?.core?.currentPage ?? newState?.plugins?.scroll?.currentPage;
           if (typeof page === 'number' && page > 0) {
             activePageRef.current = page;
@@ -404,6 +426,38 @@ export default function PdfWorkspace({ projectId, attachmentId, paperId, paperTi
   const getCapability = useCallback((pluginId) => {
     return registry?.getPlugin?.(pluginId)?.provides?.() ?? null;
   }, [registry]);
+
+  // 监听画布批注选中状态，在点击位置给出轻量就地操作，而不是复用庞大的原生菜单。
+  useEffect(() => {
+    if (!registry || !documentId) return undefined;
+    const annotationCap = getCapability('annotation');
+    const scope = annotationCap?.forDocument?.(documentId);
+    if (!scope?.onStateChange) return undefined;
+    const syncSelection = (state) => {
+      const uid = state?.selectedUids?.[0];
+      if (!uid || state.selectedUids.length !== 1) {
+        setAnnotationPeek(null);
+        return;
+      }
+      const object = state.byUid?.[uid]?.object;
+      if (!object) return;
+      const stored = annotations.find((item) => item.id === uid);
+      setAnnotationPeek({
+        item: stored || {
+          id: uid,
+          pageNumber: (object.pageIndex ?? 0) + 1,
+          subtype: object.type,
+          color: object.strokeColor,
+          selectedText: object.contents || '',
+          embedPdf: { annotation: object },
+        },
+        x: lastViewerPointer.current.x,
+        y: lastViewerPointer.current.y,
+      });
+    };
+    syncSelection(scope.getState?.());
+    return scope.onStateChange(syncSelection);
+  }, [registry, documentId, getCapability, annotations]);
 
   /** 读取当前缩放（能力/状态不存在时返回 1）。 */
   const getCurrentZoom = useCallback(() => {
@@ -922,17 +976,16 @@ export default function PdfWorkspace({ projectId, attachmentId, paperId, paperTi
       });
   }, [showToast]);
 
-  /** 新建自定义分类（prompt 输入名称，颜色默认；改名/删色走文献中心标签/分类管理）。 */
-  const createCategory = useCallback(async () => {
-    const name = window.prompt('新建分类名称：', '');
-    if (!name || !name.trim()) return;
-    try {
-      const res = await repositories.createNoteCategory({ name: name.trim() });
-      setCategories(prev => [...prev, res.category]);
-      showToast('已创建分类「' + name.trim() + '」');
-    } catch (error) {
-      showToast('分类创建失败：' + String(error.message || error), true);
-    }
+  /** 新建自定义分类（统一阅读器弹窗，颜色使用默认值）。 */
+  const createCategory = useCallback(() => {
+    setInputBox({
+      title: '新建分类', label: '分类名称', value: '', submitLabel: '创建',
+      onSubmit: async (name) => {
+        const res = await repositories.createNoteCategory({ name });
+        setCategories(prev => [...prev, res.category]);
+        showToast('已创建分类「' + name + '」');
+      },
+    });
   }, [showToast]);
 
   // ── v14 补充：分类/标签管理（改名/改色/删除；删除不删笔记） ──
@@ -1202,29 +1255,49 @@ export default function PdfWorkspace({ projectId, attachmentId, paperId, paperTi
 
   // ── 批注删除 / 编辑评论 ──
   const deleteAnnotationItem = useCallback((item) => {
-    if (!window.confirm('删除这条批注？已插入笔记的引文文本会保留，但原定位将标记失效。')) return;
-    const annotationCap = getCapability('annotation');
-    try {
-      annotationCap?.deleteAnnotation?.(item.pageNumber - 1, item.id);
-      syncAnnotationsFromEngine();
-      showToast('批注已删除');
-    } catch (error) {
-      showToast('删除失败：' + String(error.message || error), true);
-    }
+    setConfirmBox({
+      title: '删除批注',
+      message: '已插入笔记的引文文本会保留，但原文定位将标记为失效。',
+      options: [
+        { label: '删除批注', danger: true, action: () => {
+          const annotationCap = getCapability('annotation');
+          try {
+            annotationCap?.deleteAnnotation?.(item.pageNumber - 1, item.id);
+            setAnnotationPeek(null);
+            syncAnnotationsFromEngine();
+            showToast('批注已删除');
+          } catch (error) {
+            showToast('删除失败：' + String(error.message || error), true);
+          }
+        } },
+        { label: '取消', action: () => {} },
+      ],
+    });
   }, [getCapability, syncAnnotationsFromEngine]);
 
   const editAnnotationComment = useCallback((item) => {
-    const comment = window.prompt('编辑评论：', item.selectedText || '');
-    if (comment === null) return;
-    const annotationCap = getCapability('annotation');
-    try {
-      annotationCap?.updateAnnotation?.(item.pageNumber - 1, item.id, { contents: String(comment) });
-      syncAnnotationsFromEngine();
-      showToast('评论已更新');
-    } catch (error) {
-      showToast('更新失败：' + String(error.message || error), true);
-    }
+    setInputBox({
+      title: '编辑批注评论', label: '评论', value: item.embedPdf?.annotation?.contents || item.selectedText || '',
+      multiline: true, submitLabel: '保存', allowEmpty: true,
+      onSubmit: async (comment) => {
+        const annotationCap = getCapability('annotation');
+        annotationCap?.updateAnnotation?.(item.pageNumber - 1, item.id, { contents: comment });
+        await syncAnnotationsFromEngine();
+        showToast('评论已更新');
+      },
+    });
   }, [getCapability, syncAnnotationsFromEngine]);
+
+  const recolorAnnotation = useCallback((item, color) => {
+    try {
+      getCapability('annotation')?.updateAnnotation?.(item.pageNumber - 1, item.id, { strokeColor: color });
+      setAnnotationPeek(prev => prev ? { ...prev, item: { ...prev.item, color } } : null);
+      syncAnnotationsFromEngine();
+      showToast('批注颜色已更新');
+    } catch (error) {
+      showToast('改色失败：' + String(error.message || error), true);
+    }
+  }, [getCapability, syncAnnotationsFromEngine, showToast]);
 
   // ── 导出带批注 PDF ──
   const exportAnnotatedPdf = useCallback(async () => {
@@ -1400,11 +1473,14 @@ export default function PdfWorkspace({ projectId, attachmentId, paperId, paperTi
       if (event.key !== 'Escape') return;
       if (selectionMenu) { dismissSelection(); return; }
       if (explainBox) { setExplainBox(null); return; }
+      if (annotationPeek) { getCapability('annotation')?.deselectAnnotation?.(); setAnnotationPeek(null); return; }
+      if (inputBox) { setInputBox(null); return; }
       if (confirmBox) { setConfirmBox(null); return; }
+      if (metaManagerOpen) { setMetaManagerOpen(false); return; }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [selectionMenu, explainBox, confirmBox, dismissSelection, goBack]);
+  }, [selectionMenu, explainBox, annotationPeek, inputBox, confirmBox, metaManagerOpen, dismissSelection, goBack, getCapability]);
 
   // 分类计数（管理弹窗用；逐句笔记当前用量）
   const categoryCounts = {};
@@ -1469,6 +1545,8 @@ export default function PdfWorkspace({ projectId, attachmentId, paperId, paperTi
               onEditComment={editAnnotationComment}
               registry={registry}
               documentId={documentId}
+              pageCount={pageCount}
+              activePage={activePage}
               getCapability={getCapability}
             />
           </aside>
@@ -1484,7 +1562,9 @@ export default function PdfWorkspace({ projectId, attachmentId, paperId, paperTi
         </button>
 
         {/* 中央 PDF */}
-        <main className="wb-center">
+        <main className="wb-center" onPointerDownCapture={(event) => {
+          lastViewerPointer.current = { x: event.clientX, y: event.clientY };
+        }}>
           {pdf.status === 'loading' && <StateBox icon={<IconSearch size={18} />} text="正在加载 PDF…" />}
           {pdf.status === 'error' && (
             <StateBox icon={<IconAlert size={18} />} text={'PDF 加载失败'} detail={pdf.error} error />
@@ -1530,6 +1610,18 @@ export default function PdfWorkspace({ projectId, attachmentId, paperId, paperTi
               box={explainBox}
               onClose={() => setExplainBox(null)}
               onRetry={explainSelection}
+            />
+          )}
+          {annotationPeek && (
+            <AnnotationPeek
+              peek={annotationPeek}
+              onEdit={() => editAnnotationComment(annotationPeek.item)}
+              onDelete={() => deleteAnnotationItem(annotationPeek.item)}
+              onRecolor={(color) => recolorAnnotation(annotationPeek.item, color)}
+              onClose={() => {
+                getCapability('annotation')?.deselectAnnotation?.();
+                setAnnotationPeek(null);
+              }}
             />
           )}
         </main>
@@ -1616,6 +1708,13 @@ export default function PdfWorkspace({ projectId, attachmentId, paperId, paperTi
         />
       )}
 
+      {inputBox && (
+        <TextInputDialog
+          config={inputBox}
+          onClose={() => setInputBox(null)}
+        />
+      )}
+
       {/* 分类/标签管理 */}
       {metaManagerOpen && (
         <MetaManagerModal
@@ -1630,6 +1729,7 @@ export default function PdfWorkspace({ projectId, attachmentId, paperId, paperTi
           onRenameTag={renameTag}
           onRemoveTag={removeTag}
           onSetTagColor={setTagColor}
+          onRequestText={setInputBox}
         />
       )}
     </div>
@@ -1690,43 +1790,37 @@ function Resizer({ side, width, onChange }) {
   return <div ref={dragRef} className={'wb-resizer wb-resizer-' + side} onPointerDown={onPointerDown} role="separator" aria-orientation="vertical" title="拖动调整宽度" />;
 }
 
-/** 左侧导航面板：目录占位 / 缩略图 / 搜索 / 批注列表。 */
-function LeftPanel({ tab, setTab, annotations, onJump, onDelete, onEditComment, registry, documentId, getCapability }) {
+/** 左侧导航面板：文档目录 / 按需缩略图 / 搜索 / 批注列表。 */
+function LeftPanel({ tab, setTab, annotations, onJump, onDelete, onEditComment, registry, documentId, pageCount, activePage, getCapability }) {
   const [keyword, setKeyword] = useState('');
   const [colorFilter, setColorFilter] = useState('');
-  const [thumbs, setThumbs] = useState([]);
-  const [outline, setOutline] = useState(null);
+  const [outline, setOutline] = useState({ status: 'idle', items: [], error: '' });
+  const thumbCache = useRef(new Map());
+  const thumbsRoot = useRef(null);
 
-  // 缩略图
+  // 目录只在打开目录页时读取；Bookmark API 返回完整的层级树。
   useEffect(() => {
-    if (tab !== 'thumbnails' || !registry) return;
+    if (tab !== 'outline' || !registry || !documentId) return undefined;
     let cancelled = false;
     (async () => {
-      const thumbCap = getCapability('thumbnail');
-      const docId = documentId || 'default';
-      const store = registry.getStore();
-      const coreState = store.getState().core;
-      const docs = coreState?.documents || {};
-      const activeDoc = documentId || Object.keys(docs)[0];
-      const pages = docs[activeDoc]?.pages || [];
-      const list = [];
-      for (let i = 0; i < Math.min(pages.length, 200); i++) {
-        try {
-          const task = thumbCap?.renderThumb?.(i, 0.5);
-          const blob = task ? await Promise.resolve(task) : null;
-          if (blob instanceof Blob) {
-            list.push({ page: i + 1, url: URL.createObjectURL(blob) });
-          } else {
-            list.push({ page: i + 1, url: null });
-          }
-        } catch {
-          list.push({ page: i + 1, url: null });
-        }
+      setOutline({ status: 'loading', items: [], error: '' });
+      try {
+        const cap = getCapability('bookmark');
+        const task = cap?.forDocument?.(documentId)?.getBookmarks?.() || cap?.getBookmarks?.();
+        const result = task?.toPromise ? await task.toPromise() : await Promise.resolve(task);
+        if (!cancelled) setOutline({ status: 'ready', items: result?.bookmarks || [], error: '' });
+      } catch (error) {
+        if (!cancelled) setOutline({ status: 'error', items: [], error: String(error.message || error) });
       }
-      if (!cancelled) setThumbs(list);
     })();
     return () => { cancelled = true; };
-  }, [tab, registry, documentId]);
+  }, [tab, registry, documentId, getCapability]);
+
+  // 文档切换或面板卸载时释放所有 Blob URL，避免长文档反复进入后堆积内存。
+  useEffect(() => () => {
+    thumbCache.current.forEach((entry) => entry.url && URL.revokeObjectURL(entry.url));
+    thumbCache.current.clear();
+  }, [documentId]);
 
   const filtered = useMemo(() => {
     let list = annotations.filter(a => a.embedPdf || a.subtype);
@@ -1783,21 +1877,24 @@ function LeftPanel({ tab, setTab, annotations, onJump, onDelete, onEditComment, 
 
       {tab === 'outline' && (
         <div className="wb-outline">
-          <p className="wb-empty">
-            目录由阅读器工具栏的“目录”按钮提供（工具栏最左侧按钮）。<br />
-            {outline === null ? '' : '当前文档目录入口在 PDF 工具栏中。'}
-          </p>
+          <div className="wb-outline-head">
+            <strong>文档大纲</strong>
+            {outline.status === 'ready' && outline.items.length > 0 && <span>{countBookmarks(outline.items)} 节</span>}
+          </div>
+          {outline.status === 'loading' && <p className="wb-empty">正在读取目录…</p>}
+          {outline.status === 'error' && <p className="wb-empty">目录读取失败<br />{outline.error}</p>}
+          {outline.status === 'ready' && outline.items.length === 0 && <p className="wb-empty">这份 PDF 没有内置目录。</p>}
+          {outline.items.length > 0 && <OutlineTree items={outline.items} activePage={activePage} onJump={onJump} />}
         </div>
       )}
 
       {tab === 'thumbnails' && (
-        <div className="wb-thumbs">
-          {thumbs.map(t => (
-            <button key={t.page} type="button" className="wb-thumb" title={'第 ' + t.page + ' 页'} onClick={() => onJump(t.page)}>
-              {t.url ? <img src={t.url} alt={'第 ' + t.page + ' 页'} loading="lazy" /> : <span className="wb-thumb-placeholder">第 {t.page} 页</span>}
-              <em>{t.page}</em>
-            </button>
+        <div className="wb-thumbs" ref={thumbsRoot}>
+          {Array.from({ length: pageCount }, (_, index) => index + 1).map(page => (
+            <ThumbnailItem key={page} page={page} active={page === activePage} rootRef={thumbsRoot}
+              cache={thumbCache.current} getCapability={getCapability} onJump={onJump} />
           ))}
+          {!pageCount && <p className="wb-empty">正在读取页面…</p>}
         </div>
       )}
 
@@ -1805,6 +1902,86 @@ function LeftPanel({ tab, setTab, annotations, onJump, onDelete, onEditComment, 
         <SearchTab getCapability={getCapability} documentId={documentId} onJump={onJump} />
       )}
     </div>
+  );
+}
+
+function OutlineTree({ items, activePage, onJump, level = 0 }) {
+  return (
+    <ul className="wb-outline-tree" data-level={level}>
+      {items.map((item, index) => (
+        <OutlineNode key={`${level}-${index}-${item.title}`} item={item} activePage={activePage} onJump={onJump} level={level} />
+      ))}
+    </ul>
+  );
+}
+
+function OutlineNode({ item, activePage, onJump, level }) {
+  const [open, setOpen] = useState(level < 1);
+  const children = item.children || [];
+  const page = bookmarkPageNumber(item.target);
+  return (
+    <li>
+      <div className={'wb-outline-row' + (page === activePage ? ' active' : '')} style={{ '--outline-depth': level }}>
+        {children.length ? (
+          <button type="button" className="wb-outline-toggle" aria-label={open ? '折叠章节' : '展开章节'} aria-expanded={open} onClick={() => setOpen(value => !value)}>
+            <IconChevronDown size={11} />
+          </button>
+        ) : <span className="wb-outline-leaf" />}
+        <button type="button" className="wb-outline-link" disabled={!page} title={item.title} onClick={() => page && onJump(page)}>
+          <span>{item.title || '未命名章节'}</span>
+          {page && <em>{page}</em>}
+        </button>
+      </div>
+      {open && children.length > 0 && <OutlineTree items={children} activePage={activePage} onJump={onJump} level={level + 1} />}
+    </li>
+  );
+}
+
+function ThumbnailItem({ page, active, rootRef, cache, getCapability, onJump }) {
+  const hostRef = useRef(null);
+  const [state, setState] = useState(() => cache.get(page) || { status: 'idle', url: '' });
+
+  useEffect(() => {
+    const node = hostRef.current;
+    if (!node || state.status !== 'idle') return undefined;
+    let cancelled = false;
+    const load = async () => {
+      setState({ status: 'loading', url: '' });
+      try {
+        const task = getCapability('thumbnail')?.renderThumb?.(page - 1, 0.42);
+        const blob = task?.toPromise ? await task.toPromise() : await Promise.resolve(task);
+        if (!(blob instanceof Blob)) throw new Error('empty thumbnail');
+        const url = URL.createObjectURL(blob);
+        if (cancelled) { URL.revokeObjectURL(url); return; }
+        const next = { status: 'ready', url };
+        cache.set(page, next);
+        setState(next);
+      } catch {
+        if (!cancelled) {
+          const next = { status: 'error', url: '' };
+          cache.set(page, next);
+          setState(next);
+        }
+      }
+    };
+    const observer = new IntersectionObserver((entries) => {
+      if (entries.some(entry => entry.isIntersecting)) {
+        observer.disconnect();
+        load();
+      }
+    }, { root: rootRef.current, rootMargin: '320px 0px', threshold: 0.01 });
+    observer.observe(node);
+    return () => { cancelled = true; observer.disconnect(); };
+  }, [page, cache, getCapability, rootRef]);
+
+  return (
+    <button ref={hostRef} type="button" className={'wb-thumb' + (active ? ' active' : '')}
+      title={'第 ' + page + ' 页'} onClick={() => onJump(page)} aria-current={active ? 'page' : undefined}>
+      {state.url
+        ? <img src={state.url} alt={'第 ' + page + ' 页'} />
+        : <span className="wb-thumb-placeholder">{state.status === 'error' ? '预览不可用' : '正在载入…'}</span>}
+      <em>{page}</em>
+    </button>
   );
 }
 
@@ -1960,49 +2137,121 @@ function SelectionToolbar({ placement, onMarkup, onSentenceNote, onQuote, onCopy
   return createPortal(toolbar, document.body);
 }
 
+/** 画布批注就地操作浮层：改色、评论、删除，不打断当前阅读位置。 */
+function AnnotationPeek({ peek, onEdit, onDelete, onRecolor, onClose }) {
+  const width = 248;
+  const x = Math.min(Math.max(8, peek.x + 10), Math.max(8, window.innerWidth - width - 8));
+  const y = Math.min(Math.max(58, peek.y + 10), Math.max(58, window.innerHeight - 118));
+  return createPortal((
+    <aside className="wb-annotation-peek" style={{ left: x, top: y }} aria-label="批注操作">
+      <header>
+        <strong>第 {peek.item.pageNumber} 页批注</strong>
+        <button type="button" onClick={onClose} aria-label="关闭批注操作">×</button>
+      </header>
+      <div className="wb-annotation-peek-colors" aria-label="批注颜色">
+        {MARKUP_COLORS.map(color => (
+          <button key={color} type="button" style={{ background: color }} aria-label={'设为 ' + color}
+            className={(peek.item.color || peek.item.embedPdf?.annotation?.strokeColor) === color ? 'active' : ''}
+            onClick={() => onRecolor(color)} />
+        ))}
+      </div>
+      <div className="wb-annotation-peek-actions">
+        <button type="button" onClick={onEdit}><IconEdit size={12} /> 评论</button>
+        <button type="button" className="danger" onClick={onDelete}><IconDelete size={12} /> 删除</button>
+      </div>
+    </aside>
+  ), document.body);
+}
+
+function ReaderDialog({ title, icon, children, actions, onClose, alert = false, className = '', overlayClass = '' }) {
+  return (
+    <div className={'wb-overlay ' + overlayClass} role={alert ? 'alertdialog' : 'dialog'} aria-modal="true" aria-label={title} onClick={onClose}>
+      <div className={'wb-overlay-panel ' + className} onClick={(event) => event.stopPropagation()}>
+        <header>
+          <strong>{icon}{title}</strong>
+          {onClose && <button type="button" className="wb-overlay-close" title="关闭" aria-label="关闭" onClick={onClose}>×</button>}
+        </header>
+        {children}
+        {actions && <div className="wb-overlay-actions">{actions}</div>}
+      </div>
+    </div>
+  );
+}
+
+function TextInputDialog({ config, onClose }) {
+  const [value, setValue] = useState(config.value || '');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  const inputRef = useRef(null);
+  useEffect(() => { inputRef.current?.focus(); inputRef.current?.select?.(); }, []);
+  const submit = async (event) => {
+    event.preventDefault();
+    const next = value.trim();
+    if (!next && !config.allowEmpty) { setError('请输入内容'); return; }
+    setBusy(true); setError('');
+    try {
+      await config.onSubmit(next);
+      onClose();
+    } catch (reason) {
+      setError(String(reason.message || reason));
+      setBusy(false);
+    }
+  };
+  return (
+    <ReaderDialog title={config.title} onClose={busy ? undefined : onClose} className="wb-input-dialog" overlayClass="wb-overlay-front">
+      <form onSubmit={submit}>
+        <label htmlFor="wb-dialog-input">{config.label || '内容'}</label>
+        {config.multiline
+          ? <textarea ref={inputRef} id="wb-dialog-input" value={value} rows={5} onChange={(event) => setValue(event.target.value)} />
+          : <input ref={inputRef} id="wb-dialog-input" value={value} onChange={(event) => setValue(event.target.value)} />}
+        {error && <p className="wb-dialog-error"><IconAlert size={12} /> {error}</p>}
+        <div className="wb-overlay-actions">
+          <button type="button" className="wb-btn-plain" disabled={busy} onClick={onClose}>取消</button>
+          <button type="submit" className="wb-btn-primary" disabled={busy}>{busy ? '处理中…' : (config.submitLabel || '确定')}</button>
+        </div>
+      </form>
+    </ReaderDialog>
+  );
+}
+
 /** 返回保存失败弹窗：重试保存 / 仍然返回。 */
 function BackFailOverlay({ onRetry, onLeaveAnyway }) {
   return (
-    <div className="wb-overlay" role="alertdialog" aria-label="部分内容保存失败">
-      <div className="wb-overlay-panel wb-back-fail">
-        <header><strong><IconAlert size={14} /> 部分内容保存失败</strong></header>
-        <p>返回前未能完成全部保存（网络或磁盘异常）。可以选择重试保存，或放弃未保存内容直接返回。</p>
-        <div className="wb-overlay-actions">
+    <ReaderDialog title="部分内容保存失败" icon={<IconAlert size={14} />} alert className="wb-back-fail"
+      actions={<>
           <button type="button" className="wb-btn-primary" onClick={onRetry}><IconRetry size={13} /> 重试保存</button>
           <button type="button" className="wb-btn-plain" onClick={onLeaveAnyway}>仍然返回</button>
-        </div>
-      </div>
-    </div>
+      </>}>
+      <p>返回前未能完成全部保存（网络或磁盘异常）。可以选择重试保存，或放弃未保存内容直接返回。</p>
+    </ReaderDialog>
   );
 }
 
 /** 三选一确认框。 */
 function ConfirmDialog({ title, message, options, onClose }) {
   return (
-    <div className="wb-overlay" role="alertdialog" aria-label={title} onClick={onClose}>
-      <div className="wb-overlay-panel" onClick={(e) => e.stopPropagation()}>
-        <header><strong>{title}</strong></header>
-        {message && <p>{message}</p>}
-        <div className="wb-overlay-actions">
+    <ReaderDialog title={title} onClose={onClose} alert actions={
+      <>
           {options.map((option, index) => (
             <button
               key={index}
               type="button"
-              className={option.primary ? 'wb-btn-primary' : 'wb-btn-plain'}
+              className={option.danger ? 'wb-btn-danger' : option.primary ? 'wb-btn-primary' : 'wb-btn-plain'}
               onClick={() => { onClose(); option.action(); }}
             >
               {option.label}
             </button>
           ))}
-        </div>
-      </div>
-    </div>
+      </>
+    }>
+      {message && <p>{message}</p>}
+    </ReaderDialog>
   );
 }
 
 /** 分类/标签管理弹窗（v14：改名/改色/删除；删除不删笔记，标签复用单一体系）。 */
 function MetaManagerModal({ categories, tagStats, tagColors, categoryCounts, onClose,
-  onRenameCategory, onRecolorCategory, onDeleteCategory, onRenameTag, onRemoveTag, onSetTagColor }) {
+  onRenameCategory, onRecolorCategory, onDeleteCategory, onRenameTag, onRemoveTag, onSetTagColor, onRequestText }) {
   const [tab, setTab] = useState('categories'); // categories | tags
   const [colorFor, setColorFor] = useState(null); // 正在改色的行 id（分类 id 或 'tag:'+name）
   const [busy, setBusy] = useState(false);
@@ -2014,11 +2263,6 @@ function MetaManagerModal({ categories, tagStats, tagColors, categoryCounts, onC
     setBusy(true); setError('');
     try { await fn(); } catch (e) { setError(String(e.message || e)); } finally { setBusy(false); }
   };
-  const promptName = (current) => {
-    const value = window.prompt('新的名称：', current || '');
-    return value && value.trim() ? value.trim() : null;
-  };
-
   return (
     <div className="wb-overlay" role="dialog" aria-label="分类与标签管理" onClick={onClose}>
       <div className="wb-overlay-panel wb-meta-manager" onClick={(e) => e.stopPropagation()}>
@@ -2046,8 +2290,8 @@ function MetaManagerModal({ categories, tagStats, tagColors, categoryCounts, onC
                 <span className="wb-meta-actions">
                   <button type="button" title="改名" aria-label={'改名单：' + category.name} disabled={busy}
                     onClick={() => {
-                      const name = promptName(category.name);
-                      if (name) run(() => onRenameCategory(category.id, name));
+                      onRequestText({ title: '重命名分类', label: '分类名称', value: category.name, submitLabel: '保存',
+                        onSubmit: (name) => run(() => onRenameCategory(category.id, name)) });
                     }}>改名</button>
                   <button type="button" title="改色" aria-label={'改色：' + category.name} disabled={busy}
                     onClick={() => setColorFor(colorFor === category.id ? null : category.id)}>颜色</button>
@@ -2076,8 +2320,8 @@ function MetaManagerModal({ categories, tagStats, tagColors, categoryCounts, onC
                 <span className="wb-meta-actions">
                   <button type="button" title="改名/合并（会同步到全部笔记）" aria-label={'改名标签：' + tag} disabled={busy}
                     onClick={() => {
-                      const name = promptName(tag);
-                      if (name && name !== tag) run(() => onRenameTag(tag, name));
+                      onRequestText({ title: '重命名标签', label: '标签名称', value: tag, submitLabel: '保存',
+                        onSubmit: (name) => name === tag ? undefined : run(() => onRenameTag(tag, name)) });
                     }}>改名</button>
                   <button type="button" title="改色" aria-label={'改色标签：' + tag} disabled={busy}
                     onClick={() => setColorFor(colorFor === 'tag:' + tag ? null : 'tag:' + tag)}>颜色</button>
