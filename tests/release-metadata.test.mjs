@@ -61,6 +61,16 @@ test("package declares an installable Harness bundle", () => {
 	assert.match(client, /id:\s*["']dsh-hana-research["']/);
 });
 
+test("runtime dependencies and compatibility are declared", () => {
+	const rootPackage = readJson("package.json");
+	// node:sqlite (lib/store.js) is only importable without --experimental-sqlite since Node 22.13.
+	assert.match(rootPackage.engines?.node ?? "", /^>=22\.13\.0$/);
+	// defineTool comes from the host; the exact dev-baseline version (0.1.0-rc.13) is not on
+	// public npm, so the peer must stay optional or every bare install fails with ETARGET.
+	assert.equal(rootPackage.peerDependencies?.["@deepseek-ai/dsh-tools"], "^0.1.0-rc.13");
+	assert.equal(rootPackage.peerDependenciesMeta?.["@deepseek-ai/dsh-tools"]?.optional, true);
+});
+
 test("public documentation reports the current release and schema", () => {
 	const readme = fs.readFileSync(path.join(ROOT, "README.md"), "utf8");
 	const guide = fs.readFileSync(path.join(ROOT, "docs/USER_GUIDE.md"), "utf8");

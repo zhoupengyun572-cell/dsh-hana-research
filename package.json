@@ -47,9 +47,20 @@
     }
   },
   "license": "MIT",
+  "engines": {
+    "node": ">=22.13.0"
+  },
   "dependencies": {
     "docx": "^9.7.1",
     "exceljs": "^4.4.0",
     "pdfkit": "^0.20.1"
+  },
+  "peerDependencies": {
+    "@deepseek-ai/dsh-tools": "^0.1.0-rc.13"
+  },
+  "peerDependenciesMeta": {
+    "@deepseek-ai/dsh-tools": {
+      "optional": true
+    }
   }
 }

@@ -117,6 +117,12 @@ dsh plugin --profile web remove dsh-hana-research
 
 > 目前尚未公开 npm/GitHub 地址；社区发布完成后会把 `<本地目录或候选包路径>` 替换为正式安装标识。
 
+## 兼容性
+
+- **Node ≥ 22.13.0**（`node:sqlite` 免旗标下限）。实际运行时随 DeepSeek Harness 桌面端内置 Node 分发；已在 Windows 实机 + Node 24.15 验证，其他版本未逐一实测。
+- **DeepSeek Harness 开发者预览**（开发基线 `@deepseek-ai/dsh-tools 0.1.0-rc.13`）。`defineTool` 由宿主提供，插件以 optional peer 声明兼容范围 `^0.1.0-rc.13`；该精确版本目前不在公共 npm 注册表，因此不依赖注册表安装，始终由 Harness Profile 提供。
+- **生产依赖**仅 3 个：`docx`、`exceljs`、`pdfkit`（导出用）。`exceljs` 的传递依赖 `uuid@8.3.2` 存在一项中等审计告警，上游尚未发版修复；属中低风险并有书面说明，安全政策见后续版本。
+
 ## 前端构建（阅读工作区改版时）
 
 ```powershell

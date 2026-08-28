@@ -20,8 +20,8 @@
 - [x] 更新、卸载和重新安装可正确维护 bundle 配置层，且卸载不删除独立研究数据目录。
 - [x] 新用户默认使用空白数据库；作者项目与文献种子仅允许显式测试/开发 opt-in。
 - [x] 发布包具有明确文件白名单，不包含 `archive/`、`memory/`、测试截图或协作文件。
-- [ ] 直接依赖、peer 依赖、Node 与 Harness 兼容范围完整声明。
-- [ ] 生产依赖无已知高危/严重漏洞；中低风险均有处理或书面说明。
+- [x] 直接依赖、peer 依赖、Node 与 Harness 兼容范围完整声明。
+- [x] 生产依赖无已知高危/严重漏洞；中低风险均有处理或书面说明。
 - [ ] PDF 下载重定向、响应体积、路径访问和 API 暴露完成安全验证。
 - [ ] LICENSE、第三方许可证、README、隐私/权限说明、更新日志和支持政策齐全。
 - [ ] CI 自动执行完整 Node 测试、编辑器测试、打包检查和干净安装冒烟。
@@ -66,6 +66,8 @@
 
 验收：不借用开发机全局依赖即可安装和运行；兼容矩阵有可复现结果。
 
+状态：已完成。`engines.node >= 22.13.0`（`node:sqlite` 免旗标下限，官方文档核实）；`@deepseek-ai/dsh-tools` 以 optional peer `^0.1.0-rc.13` 声明——裸装验证发现该精确版本不在公共 npm（公网止于 0.1.0-rc.8 / 0.1.1-rc.2），非可选 peer 会让任何安装以 ETARGET 失败，故保持 optional 并由 Harness Profile 在运行时提供（隔离 Profile 冒烟确认）。干净环境裸装候选包成功（127 个包，仅注册表拉取）；npm audit 无高危/严重项，3 项中等均来自 `exceljs → uuid@8.3.2` 链（上游未修复，书面说明已写入 README）；弃用告警 6 项（inflight/glob/rimraf/fstream/lodash.isequal/uuid）全部位于三个生产依赖的传递树内，属上游问题。兼容矩阵：Windows 实机 + Node 24.15 + Harness rc.13 已验证；其他 Node/平台未实测并在 README 标注。
+
 ### R5：安全加固
 
 修复依赖告警、PDF 重定向白名单与流式体积限制；审计 API、文件路径、上传、导出、日志和联网行为。
@@ -95,7 +97,7 @@
 - 标准 bundle 与正式包名已在 R1 完成；公开 npm/GitHub specifier 待 R8。
 - 发布包已完成瘦身（R3）：`files` 白名单 + 旧 pdf.js 清理后压缩 18.5 MB；`tools/` 中 6 个开发脚本与 `shots/` 截图目录不进入发布包。
 - 作者项目种子已改为显式测试/开发 opt-in；运行时默认空数据库。
-- `@deepseek-ai/dsh-tools` 被直接导入但未在发布 manifest 声明。
-- 生产依赖存在一项中等级别间接依赖告警。
+- 依赖与兼容已在 R4 声明：`engines.node >= 22.13.0`；`dsh-tools` 为 optional peer（公网无 rc.13，由宿主提供）；剩余依赖风险仅 `exceljs → uuid@8.3.2` 中等告警与 6 项上游弃用告警，均已书面说明。
+- README、用户指南和维护者总览曾存在版本/schema 口径漂移。
 - README、用户指南和维护者总览曾存在版本/schema 口径漂移。
 - 尚无公开 Git 远程、CI、根 LICENSE、安全政策或一键安装验证。
