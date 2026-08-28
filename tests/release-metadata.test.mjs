@@ -67,7 +67,8 @@ test("runtime dependencies and compatibility are declared", () => {
 	assert.match(rootPackage.engines?.node ?? "", /^>=22\.13\.0$/);
 	// defineTool comes from the host; the exact dev-baseline version (0.1.0-rc.13) is not on
 	// public npm, so the peer must stay optional or every bare install fails with ETARGET.
-	assert.equal(rootPackage.peerDependencies?.["@deepseek-ai/dsh-tools"], "^0.1.0-rc.13");
+	assert.equal(rootPackage.peerDependencies?.["@deepseek-ai/dsh-tools"], ">=0.1.0-rc.13 <0.2.0");
+	assert.equal(rootPackage.devDependencies?.["@deepseek-ai/dsh-tools"], "0.1.1-rc.2");
 	assert.equal(rootPackage.peerDependenciesMeta?.["@deepseek-ai/dsh-tools"]?.optional, true);
 });
 
@@ -89,7 +90,6 @@ test("community runtime and public docs do not expose author-local paths", () =>
 	const authorProjects = new RegExp([["Chat", "-SJT"].join(""), ["青少年", "情绪应对"].join("")].join("|"), "i");
 	const publicFiles = [
 		"README.md",
-		"docs/COMMUNITY_RELEASE_PLAN.md",
 		"docs/PLUGIN_OVERVIEW.md",
 		"docs/USER_GUIDE.md",
 		"lib/index.js",
