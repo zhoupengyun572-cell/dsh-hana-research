@@ -31,3 +31,5 @@
 ### 兼容性
 
 - Windows 实机 + Node 24.15 + Harness `dsh-tools 0.1.0-rc.13` 已验证；其他 Node 版本（下限 22.13.0，由 `node:sqlite` 免旗标推导）与 macOS/Linux 未实测，已在 README 标注。
+
+[0.4.0-beta.1]: https://github.com/zhoupengyun572-cell/dsh-hana-research/releases/tag/v0.4.0-beta.1

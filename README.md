@@ -1,15 +1,10 @@
 # DSH Hana Research（dsh-hana-research）
 
-将 OpenHanako 版 HanaResearch（文献中心 / 项目库 / PDF 阅读与笔记）移植为 DeepSeek Harness 静态 Cordis 插件。
+面向心理学与社会科学研究的本地文献工作台，以静态 Cordis 插件形式运行于 DeepSeek Harness。
 
-- 移植方案（历史）：`archive/docs/PORT_PLAN.md`
-- 产品功能设计（历史）：`archive/docs/PRODUCT_DESIGN.md`
 - **插件关键内容总览**：`docs/PLUGIN_OVERVIEW.md`
 - **用户使用说明书（含工作流程图与功能树形图）**：`docs/USER_GUIDE.md`
-- 阅读工作区（历史，EmbedPDF + Tiptap）：`archive/docs/PHASE_READER_WORKBENCH.md`
-- 历史阶段文档/验证脚本/截图与临时产物：集中归档于 `archive/`（含 `archive/MANIFEST-历史档案清单.md`，记录原路径→归档路径映射）
 - 第三方依赖与许可证：`THIRD_PARTY_LICENSES.md`
-- 参考实现（已冻结）：`../openhanako-research-agent/plugins/hana-research/`（v0.15.0）
 
 ## 包结构
 
@@ -100,13 +95,15 @@
 
 ## 安装（Beta 候选版）
 
-公开发布前可从本地目录或生成的 `.tgz` 候选包安装：
+推荐固定到已发布的 Git tag 安装：
 
 ```powershell
-dsh plugin --profile web add <本地目录或候选包路径>
+dsh plugin --profile web add github:zhoupengyun572-cell/dsh-hana-research#v0.4.0-beta.1
 ```
 
 安装命令会读取包内 `dsh.bundle`，自动把 Hana Research 配置层加入 `web` Profile，无需手工修改 `cordis.patch.yml`。安装完成后重启 DeepSeek Harness。首次启动会自动迁移到当前 schema v19；跨版本升级会在需要时保留迁移前快照，旧批注在新阅读器打开对应 PDF 时自动换算导入。
+
+也可以从 [GitHub Release](https://github.com/zhoupengyun572-cell/dsh-hana-research/releases/tag/v0.4.0-beta.1) 下载 `.tgz`，再把本地文件路径传给同一条 `add` 命令。建议始终固定 tag 或校验 Release 中的 SHA-256，避免上游分支更新静默改变安装内容。
 
 更新和卸载：
 
@@ -115,13 +112,13 @@ dsh plugin --profile web update dsh-hana-research
 dsh plugin --profile web remove dsh-hana-research
 ```
 
-> 目前尚未公开 npm/GitHub 地址；社区发布完成后会把 `<本地目录或候选包路径>` 替换为正式安装标识。
-
 ## 兼容性
 
 - **Node ≥ 22.13.0**（`node:sqlite` 免旗标下限）。实际运行时随 DeepSeek Harness 桌面端内置 Node 分发；已在 Windows 实机 + Node 24.15 验证，其他版本未逐一实测。
 - **DeepSeek Harness 开发者预览**（开发基线 `@deepseek-ai/dsh-tools 0.1.0-rc.13`）。`defineTool` 由宿主提供，插件以 optional peer 声明兼容范围 `^0.1.0-rc.13`；该精确版本目前不在公共 npm 注册表，因此不依赖注册表安装，始终由 Harness Profile 提供。
-- **生产依赖**仅 3 个：`docx`、`exceljs`、`pdfkit`（导出用）。`exceljs` 的传递依赖 `uuid@8.3.2` 存在一项中等审计告警，上游尚未发版修复；属中低风险并有书面说明，安全政策见后续版本。
+- **生产依赖**仅 3 个：`docx`、`exceljs`、`pdfkit`（导出用）。`exceljs` 的传递依赖 `uuid@8.3.2` 存在一项中等审计告警，上游尚未发版修复；风险评估见 [SECURITY.md](SECURITY.md)。
+
+问题反馈与安全报告入口：[GitHub Issues](https://github.com/zhoupengyun572-cell/dsh-hana-research/issues)。
 
 ## 前端构建（阅读工作区改版时）
 

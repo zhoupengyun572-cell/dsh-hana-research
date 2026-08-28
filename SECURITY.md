@@ -1,6 +1,6 @@
 # 安全政策（Security Policy）
 
-支持版本：`0.4.0-beta.1`（Beta）。反馈渠道与负责人信息在社区公开发布（R8）时补充。
+支持版本：`0.4.0-beta.1`（Beta）。漏洞与安全问题请通过 [GitHub Issues](https://github.com/zhoupengyun572-cell/dsh-hana-research/issues) 报告；请勿在报告中上传真实研究数据、受版权保护的 PDF 或其他敏感材料。
 
 ## 数据存放位置
 

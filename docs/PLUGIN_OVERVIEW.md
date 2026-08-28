@@ -25,17 +25,15 @@ dsh-hana-research/
 ├─ lib/           宿主：store.js(数据层) · api.js(REST) · pages.js(页面/资产路由) · index.js(装配)
 │                 register-tools.js(20 个 Agent 工具) · reporting.js(订阅汇报) · client.js(桥接)
 ├─ assets/        research.js|css(文献中心+项目库 SPA) · reader-workbench.js|css(阅读工作区)
-│                 research-companion.js(上下文伴生) · research-cards.js(对话卡) · vendor/(pdf.js + embedpdf 自托管)
+│                 research-companion.js(上下文伴生) · research-cards.js(对话卡) · vendor/embedpdf(自托管)
 ├─ web/           阅读工作区源码（React18 + @embedpdf/react-pdf-viewer 2.15 + @tiptap 3.30，esbuild 构建）
 ├─ tests/         *.test.mjs 自动化测试（node --test）
 ├─ tools/         运行时 Agent 工具(*.js) + 当前验证套件(*.mjs) + cleanup-temp-entities.mjs
 ├─ docs/          USER_GUIDE.md（使用说明+流程图） · PLUGIN_OVERVIEW.md（本文件）
-├─ memory/        里程碑运行记录（活档案）
-├─ archive/       历史文档/一次性脚本/截图/临时产物（见 archive/MANIFEST-历史档案清单.md）
-└─ README.md · CLAUDE.md（协作约定） · THIRD_PARTY_LICENSES.md
+└─ README.md · README.en.md · SECURITY.md · CONTRIBUTING.md · THIRD_PARTY_LICENSES.md
 ```
 
-> 注意：`lib/`、`assets/`、`web/`、`tests/*.test.mjs`、`tools/*.js` 是运行/构建必需，**不可归档移动**；历史内容统一在 `archive/`。
+> `lib/`、`assets/` 和 `tools/*.js` 是运行必需；`web/` 是阅读工作区源码，`tests/` 与 `tools/*.mjs` 用于开发验证。
 
 ## 4. 功能能力矩阵
 
@@ -83,6 +81,5 @@ dsh-hana-research/
 |---|---|
 | `docs/USER_GUIDE.md` | 使用说明书 + Mermaid 流程图/树形图 |
 | `docs/PLUGIN_OVERVIEW.md` | 本文件：关键内容汇总 |
-| `archive/MANIFEST-历史档案清单.md` | 历史文件映射/处置 |
-| `memory/*.md` | 里程碑运行记录（M1 视觉收敛 → M3 任务面板 → M4 驾驶舱/证据/副驾驶/闭环/设置） |
-| `README.md` / `CLAUDE.md` | 安装部署 / 协作约定 |
+| `README.md` / `README.en.md` | 中英文安装、兼容性与隐私说明 |
+| `SECURITY.md` / `CONTRIBUTING.md` | 安全边界、问题反馈与贡献约定 |

@@ -30,15 +30,20 @@ npm pack --dry-run
 
 - 中文沟通与中文界面优先，文件统一 UTF-8。
 - 提交信息使用 `feat:` / `fix:` / `chore:` 前缀，附发布阶段编号（如 R6）。
-- 每个可验证的里程碑在 `memory/` 下写一篇简短记录（目标、完成项、验证结果、遗留边界），这是本仓库的核心协作约定。
 - 不要把检索元数据当作「已阅读全文」；Agent 工具引用本地证据时保留标题、DOI、页码与标签。
 - 写入类操作必须保留 Harness approval 确认与审计链。
-- `archive/`、`memory/`、`tests/`、`tools/`（除运行时工具）、`work/` 不进入发布包（见根 `package.json` 的 `files` 白名单与 `tests/release-metadata.test.mjs` 守卫）。
+- `tests/`、`web/` 源码与 `tools/` 中的开发脚本不进入 npm/tarball 发布包（见根 `package.json` 的 `files` 白名单与 `tests/release-metadata.test.mjs` 守卫）。
 
 ## 发布流程
 
-发布门槛与阶段计划见 `docs/COMMUNITY_RELEASE_PLAN.md`（R0–R8）。修改 `package.json`、`cordis.patch.yml`、README、文档或安全相关代码时，请同步运行 `node --test tests/release-metadata.test.mjs` 与 `node --test tests/security.test.mjs`，确保版本口径、隐私扫描、白名单与联网防护不被破坏。
+修改 `package.json`、`cordis.patch.yml`、README、文档或安全相关代码时，请同步运行 `node --test tests/release-metadata.test.mjs` 与 `node --test tests/security.test.mjs`，确保版本口径、隐私扫描、白名单与联网防护不被破坏。
 
 ## 行为准则
 
 保持友善与学术诚信；引用他人工作时注明出处。
+
+## 反馈与贡献
+
+- 使用 [GitHub Issues](https://github.com/zhoupengyun572-cell/dsh-hana-research/issues) 提交可复现的问题或功能建议。
+- 提交 Pull Request 前请运行完整测试，并说明兼容性与数据迁移影响。
+- 请勿提交真实研究数据库、PDF、访问令牌、本机绝对路径或可识别参与者的信息。

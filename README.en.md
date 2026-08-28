@@ -18,7 +18,7 @@ Hana Research turns a personal literature workflow — **discover → organize �
 Requires the [DeepSeek Harness](https://www.deepseek.com) desktop app (developer preview).
 
 ```powershell
-dsh plugin --profile web add <local-dir-or-tgz>
+dsh plugin --profile web add github:zhoupengyun572-cell/dsh-hana-research#v0.4.0-beta.1
 ```
 
 Update / uninstall:
@@ -28,7 +28,7 @@ dsh plugin --profile web update dsh-hana-research
 dsh plugin --profile web remove dsh-hana-research
 ```
 
-No public npm/GitHub specifier yet — until the community release (R8), install from the local directory or a packaged `.tgz`.
+The Git tag is intentionally pinned. You can also download the `.tgz` and SHA-256 file from the [GitHub Release](https://github.com/zhoupengyun572-cell/dsh-hana-research/releases/tag/v0.4.0-beta.1), then install the local tarball.
 
 ## Compatibility
 
@@ -55,3 +55,5 @@ After a restart: `GET /api/hana-research/health` → `{ok:true, releaseVersion:"
 ## License
 
 [MIT](LICENSE) · third-party notices in [THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md).
+
+Questions, bug reports, and security reports: [GitHub Issues](https://github.com/zhoupengyun572-cell/dsh-hana-research/issues).

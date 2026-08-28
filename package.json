@@ -2,12 +2,28 @@
   "name": "dsh-hana-research",
   "version": "0.4.0-beta.1",
   "description": "Hana Research for DeepSeek Harness: literature discovery, journal tracking, project libraries, PDF reading and research notes.",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/zhoupengyun572-cell/dsh-hana-research.git"
+  },
+  "homepage": "https://github.com/zhoupengyun572-cell/dsh-hana-research#readme",
+  "bugs": {
+    "url": "https://github.com/zhoupengyun572-cell/dsh-hana-research/issues"
+  },
+  "keywords": [
+    "deepseek-harness",
+    "dsh-plugin",
+    "literature-review",
+    "academic-research",
+    "pdf-annotation"
+  ],
   "type": "module",
   "main": "lib/index.js",
   "files": [
     "lib",
     "assets",
-    "docs",
+    "docs/PLUGIN_OVERVIEW.md",
+    "docs/USER_GUIDE.md",
     "cordis.patch.yml",
     "tools/_shared.js",
     "tools/add-paper-to-project.js",
