@@ -1,4 +1,4 @@
-# DSH Hana Research（@local/dsh-hana-research）
+# DSH Hana Research（dsh-hana-research）
 
 将 OpenHanako 版 HanaResearch（文献中心 / 项目库 / PDF 阅读与笔记）移植为 DeepSeek Harness 静态 Cordis 插件。
 
@@ -98,17 +98,24 @@
 - 风险偏倚矩阵、GRADE 证据概况和完整 JSON 审计数据可直接导出
 - Markdown、CSV 和 XLSX 证据矩阵动态追加项目字段；XLSX 额外生成“编码字典”工作表
 
-## 安装（需重启 Harness 生效）
+## 安装（Beta 候选版）
 
-1. 备份 `C:\Users\zhou\.dsh\profiles\web\cordis.patch.yml`
-2. 复制本包到 `C:\Users\zhou\.dsh\profiles\node_modules\@local\dsh-hana-research\`
-3. `cordis.patch.yml` 追加：
-   ```yaml
-   - insert:
-       - id: hana-research
-         name: '@local/dsh-hana-research'
-   ```
-4. 重启 DeepSeek Harness（首次启动自动迁移到当前 schema v19；跨版本升级会在需要时保留迁移前快照，旧批注在新阅读器打开对应 PDF 时自动换算导入）
+公开发布前可从本地目录或生成的 `.tgz` 候选包安装：
+
+```powershell
+dsh plugin --profile web add <本地目录或候选包路径>
+```
+
+安装命令会读取包内 `dsh.bundle`，自动把 Hana Research 配置层加入 `web` Profile，无需手工修改 `cordis.patch.yml`。安装完成后重启 DeepSeek Harness。首次启动会自动迁移到当前 schema v19；跨版本升级会在需要时保留迁移前快照，旧批注在新阅读器打开对应 PDF 时自动换算导入。
+
+更新和卸载：
+
+```powershell
+dsh plugin --profile web update dsh-hana-research
+dsh plugin --profile web remove dsh-hana-research
+```
+
+> 目前尚未公开 npm/GitHub 地址；社区发布完成后会把 `<本地目录或候选包路径>` 替换为正式安装标识。
 
 ## 前端构建（阅读工作区改版时）
 
@@ -128,7 +135,6 @@ npm run dev            # watch 模式
 
 ## 回滚
 
-1. `cordis.patch.yml` 删除 `hana-research` 条目（还原备份）
-2. 删除 `C:\Users\zhou\.dsh\profiles\node_modules\@local\dsh-hana-research\`
-3. 重启应用。插件失败只会标记该 entry FAILED，不影响应用启动。
-4. 数据回滚：先停止 Harness，再使用对应迁移前快照 `research.db.bak-v*` 覆盖数据库；不要跨 schema 直接用旧代码写入新数据库。
+1. 执行 `dsh plugin --profile web remove dsh-hana-research`。
+2. 重启应用。卸载插件不会自动删除 `$DSH_HOME/plugin-data/hana-research/` 中的研究数据。
+3. 数据回滚：先停止 Harness，再使用对应迁移前快照 `research.db.bak-v*` 覆盖数据库；不要跨 schema 直接用旧代码写入新数据库。

@@ -17,8 +17,21 @@ function readJson(relativePath) {
 test("release metadata uses one package and asset version", () => {
 	const rootPackage = readJson("package.json");
 	const webPackage = readJson("web/package.json");
+	assert.equal(rootPackage.name, "dsh-hana-research");
 	assert.equal(rootPackage.version, HANA_RELEASE_VERSION);
 	assert.equal(webPackage.version, HANA_RELEASE_VERSION);
+});
+
+test("package declares an installable Harness bundle", () => {
+	const rootPackage = readJson("package.json");
+	assert.equal(rootPackage.private, undefined);
+	assert.equal(rootPackage.dsh?.bundle?.patch, "./cordis.patch.yml");
+	assert.equal(rootPackage.dsh?.client?.platform, "web");
+	const patch = fs.readFileSync(path.join(ROOT, "cordis.patch.yml"), "utf8");
+	assert.match(patch, /id:\s*hana-research/);
+	assert.match(patch, /name:\s*['"]?dsh-hana-research['"]?/);
+	const client = fs.readFileSync(path.join(ROOT, "lib/client.js"), "utf8");
+	assert.match(client, /id:\s*["']dsh-hana-research["']/);
 });
 
 test("public documentation reports the current release and schema", () => {

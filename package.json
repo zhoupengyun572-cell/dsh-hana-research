@@ -1,7 +1,6 @@
 {
-  "name": "@local/dsh-hana-research",
+  "name": "dsh-hana-research",
   "version": "0.4.0-beta.1",
-  "private": true,
   "description": "Hana Research for DeepSeek Harness: literature discovery, journal tracking, project libraries, PDF reading and research notes.",
   "type": "module",
   "main": "lib/index.js",
@@ -11,6 +10,9 @@
     "./package.json": "./package.json"
   },
   "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
     "client": {
       "platform": "web"
     }

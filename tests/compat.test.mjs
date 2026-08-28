@@ -4,7 +4,7 @@
 //   3) validateArgs 对非法参数拒绝；
 //   4) 模拟注册 + 实际执行：一个只读工具 + 一个需审批的写工具（批准/拒绝两路）；
 //   5) output.render 返回合法 ContentBlock。
-// 运行：node <profile>/node_modules/@local/dsh-hana-research/tests/compat.test.mjs
+// 运行：node <profile>/node_modules/dsh-hana-research/tests/compat.test.mjs
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";

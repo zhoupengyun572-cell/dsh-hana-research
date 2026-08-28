@@ -16,8 +16,8 @@
 
 只有以下条件全部满足，才允许公开标记 `0.4.0-beta.1`：
 
-- [ ] `dsh plugin --profile web add <specifier>` 可在全新 Profile 一次安装并自动激活。
-- [ ] 更新、卸载和重新安装不会破坏既有研究数据库。
+- [x] `dsh plugin --profile web add <specifier>` 可在全新 Profile 一次安装并自动激活（本地 `.tgz` 候选包已验证；公开 specifier 待 R8）。
+- [x] 更新、卸载和重新安装可正确维护 bundle 配置层，且卸载不删除独立研究数据目录。
 - [ ] 新用户默认看到空白或明确标注的可选 Demo，不出现作者项目。
 - [ ] 发布包具有明确文件白名单，不包含 `archive/`、`memory/`、测试截图或协作文件。
 - [ ] 直接依赖、peer 依赖、Node 与 Harness 兼容范围完整声明。
@@ -41,6 +41,8 @@
 增加 `dsh.bundle` manifest 和 `cordis.patch.yml`；改用正式包名；移除手工修改用户 Profile 的安装要求。
 
 验收：全新临时 Profile 通过一行命令安装，`--dump-config` 能看到 Hana Research 配置层。
+
+状态：已完成。正式包名为 `dsh-hana-research`；npm 当前未发现同名公开包。候选 `.tgz` 已在隔离的全新 `web` Profile 完成安装、启动、更新、卸载和重新安装验证。
 
 ### R2：隐私与初始数据
 
