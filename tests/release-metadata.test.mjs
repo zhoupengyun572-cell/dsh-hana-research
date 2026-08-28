@@ -118,6 +118,10 @@ test("release package is whitelist-only and stays within the size budget", () =>
 		"cordis.patch.yml",
 		"tools",
 		"README.md",
+		"README.en.md",
+		"CHANGELOG.md",
+		"CONTRIBUTING.md",
+		"LICENSE",
 		"SECURITY.md",
 		"THIRD_PARTY_LICENSES.md",
 		"package.json",
@@ -153,6 +157,16 @@ test("release package is whitelist-only and stays within the size budget", () =>
 			assert.ok(packedPaths.has(toolPath), `lib/${name} imports ${toolPath} but it is not in the files whitelist`);
 		}
 	}
+});
+
+test("governance documents ship with the release", () => {
+	for (const name of ["LICENSE", "CHANGELOG.md", "CONTRIBUTING.md", "SECURITY.md", "README.en.md", "THIRD_PARTY_LICENSES.md"]) {
+		assert.ok(fs.existsSync(path.join(ROOT, name)), `missing governance document: ${name}`);
+	}
+	const changelog = fs.readFileSync(path.join(ROOT, "CHANGELOG.md"), "utf8");
+	assert.match(changelog, new RegExp(`\\[${HANA_RELEASE_VERSION}\\]`), "CHANGELOG must have an entry for the current version");
+	const license = fs.readFileSync(path.join(ROOT, "LICENSE"), "utf8");
+	assert.match(license, /MIT License/);
 });
 
 test("bundled reader ships only the pdfium workbench, not the legacy pdf.js app", () => {

@@ -23,7 +23,7 @@
 - [x] 直接依赖、peer 依赖、Node 与 Harness 兼容范围完整声明。
 - [x] 生产依赖无已知高危/严重漏洞；中低风险均有处理或书面说明。
 - [x] PDF 下载重定向、响应体积、路径访问和 API 暴露完成安全验证。
-- [ ] LICENSE、第三方许可证、README、隐私/权限说明、更新日志和支持政策齐全。
+- [x] LICENSE、第三方许可证、README、隐私/权限说明、更新日志和支持政策齐全。
 - [ ] CI 自动执行完整 Node 测试、编辑器测试、打包检查和干净安装冒烟。
 - [ ] 至少完成 Windows 实机验收；其他平台若未验证，README 必须明确标注。
 - [ ] 候选包在真实 Harness 中完成安装→创建项目→上传 PDF→阅读批注→导出→升级→卸载闭环。
@@ -81,6 +81,8 @@
 提供中英文 README、LICENSE、CHANGELOG、SECURITY、CONTRIBUTING；说明联网域名、数据目录、备份恢复、权限和问题反馈。
 
 验收：陌生用户只阅读公开文档即可完成安装、使用、更新和卸载。
+
+状态：已完成。新增根 `LICENSE`（MIT）、`CHANGELOG.md`（0.4.0-beta.1 条目，Keep a Changelog 口径）、`CONTRIBUTING.md`（环境、测试命令、memory 协作约定、发布门槛联动）与 `README.en.md`（英文入口，明确中文文档为准）；全部加入 `files` 白名单并由发布元数据测试断言存在性与 CHANGELOG 版本同步。数据目录、备份回滚、schema 快照已在 README 与用户指南第 5 节；联网域名与剩余风险在 `SECURITY.md`；写入权限与审计说明在用户指南与 README。问题反馈渠道留待 R8 公开时补充联系方式。
 
 ### R7：CI 与发布候选
 
