@@ -24,7 +24,36 @@ const ABS = (path) => new URL(path, window.location.href).href;
 
 function handoffReaderToAgent({ projectId, attachmentId, paperTitle, projectTitle, pageNumber }) {
   const prompt = `请继续协助我精读《${paperTitle || '当前文献'}》${projectTitle ? `（项目：${projectTitle}）` : ''}。projectId: ${projectId}；attachmentId: ${attachmentId}；当前阅读到第 ${pageNumber || 1} 页。请先调用 hana_research_get_reader_context 和 hana_research_get_project_brief 读取真实上下文，再结合已有逐句笔记与汇总笔记建议下一步。引用证据时保留页码；没有对应笔记时请明确说明，不要推测全文内容。`;
-  window.top.postMessage({ type: 'hana-research.agent-handoff', prompt, label: '当前阅读上下文已交给 Agent' }, window.location.origin);
+  const requestId = `reader-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+  return new Promise((resolve) => {
+    let timer = null;
+    let settled = false;
+    const finish = (result) => {
+      if (settled) return;
+      settled = true;
+      window.removeEventListener('message', receive);
+      if (timer) window.clearTimeout(timer);
+      resolve(result);
+    };
+    const receive = (event) => {
+      if (event.origin !== window.location.origin) return;
+      const message = event.data;
+      if (!message || message.type !== 'hana-research.agent-handoff-ack' || message.requestId !== requestId) return;
+      finish(message.ok ? { ok: true } : { ok: false, error: message.error || '无法写入 Agent 输入框' });
+    };
+    window.addEventListener('message', receive);
+    timer = window.setTimeout(() => finish({ ok: false, error: '当前会话还没有可用的 Agent 输入框' }), 2400);
+    try {
+      window.top.postMessage({
+        type: 'hana-research.agent-handoff',
+        requestId,
+        prompt,
+        label: '当前阅读上下文已交给 Agent',
+      }, window.location.origin);
+    } catch {
+      finish({ ok: false, error: '无法连接 Agent 输入框，请稍后重试' });
+    }
+  });
 }
 
 const FONT_URLS = {
@@ -169,12 +198,28 @@ export default function PdfWorkspace({ projectId, attachmentId, paperId, paperTi
   const [annotationPeek, setAnnotationPeek] = useState(null); // { item, x, y }
   const lastViewerPointer = useRef({ x: window.innerWidth / 2, y: 120 });
   const [toast, setToast] = useState(null);
+  const [agentHandoffState, setAgentHandoffState] = useState('idle');
   const toastTimer = useRef(null);
   const showToast = useCallback((message, isError = false) => {
     setToast({ message, isError });
     if (toastTimer.current) clearTimeout(toastTimer.current);
     toastTimer.current = setTimeout(() => setToast(null), 3200);
   }, []);
+  const handoffCurrentReader = useCallback(async () => {
+    if (agentHandoffState === 'pending') return;
+    setAgentHandoffState('pending');
+    const result = await handoffReaderToAgent({
+      projectId, attachmentId, paperTitle, projectTitle, pageNumber: activePage,
+    });
+    if (!result.ok) {
+      setAgentHandoffState('error');
+      showToast(result.error || '交接失败，请重试', true);
+      window.setTimeout(() => setAgentHandoffState('idle'), 2400);
+      return;
+    }
+    setAgentHandoffState('done');
+    showToast('已加入 Agent 输入框');
+  }, [agentHandoffState, projectId, attachmentId, paperTitle, projectTitle, activePage, showToast]);
 
   // ── 返回导航 ──
   const [backState, setBackState] = useState('idle'); // idle | saving | error
@@ -1519,10 +1564,12 @@ export default function PdfWorkspace({ projectId, attachmentId, paperId, paperTi
             type="button"
             className="wb-icon-btn wb-agent-btn"
             title="把当前文献、项目与阅读页码加入 Agent 输入框"
-            onClick={() => handoffReaderToAgent({ projectId, attachmentId, paperTitle, projectTitle, pageNumber: activePage })}
+            aria-busy={agentHandoffState === 'pending'}
+            disabled={agentHandoffState === 'pending'}
+            onClick={handoffCurrentReader}
           >
             <IconSpark size={15} />
-            <span>交给 Agent</span>
+            <span>{agentHandoffState === 'pending' ? '正在交接…' : '交给 Agent'}</span>
           </button>
           <button type="button" className="wb-icon-btn wb-export-btn" title="导出带批注 PDF" onClick={exportAnnotatedPdf}>
             <IconDownload size={15} />

@@ -971,6 +971,12 @@ button.wb-note-save.wb-note-error:hover { background: color-mix(in srgb, var(--w
     var(--wb-bg-layer);
 }
 .wb-agent-btn:hover { border-color: var(--wb-accent); background: var(--wb-accent-soft); }
+.wb-agent-btn[disabled] {
+  cursor: wait;
+  opacity: .72;
+  border-color: var(--wb-accent);
+  background: var(--wb-accent-soft);
+}
 
 .wb-left, .wb-right {
   position: relative;
