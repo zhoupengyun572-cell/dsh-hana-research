@@ -2,7 +2,7 @@
 
 目标候选版本：`0.4.0-beta.1`  
 目标渠道：DeepSeek Harness 社区插件目录  
-状态：发布加固进行中
+状态：`0.4.0-beta.1` 已公开发布，R0–R8 全部完成
 
 ## 发布原则
 
@@ -16,7 +16,7 @@
 
 只有以下条件全部满足，才允许公开标记 `0.4.0-beta.1`：
 
-- [x] `dsh plugin --profile web add <specifier>` 可在全新 Profile 一次安装并自动激活（本地 `.tgz` 候选包已验证；公开 specifier 待 R8）。
+- [x] `dsh plugin --profile web add <specifier>` 可在全新 Profile 一次安装并自动激活（本地 `.tgz` 与公开 GitHub 标签均已验证）。
 - [x] 更新、卸载和重新安装可正确维护 bundle 配置层，且卸载不删除独立研究数据目录。
 - [x] 新用户默认使用空白数据库；作者项目与文献种子仅允许显式测试/开发 opt-in。
 - [x] 发布包具有明确文件白名单，不包含 `archive/`、`memory/`、测试截图或协作文件。
@@ -58,7 +58,7 @@
 
 验收：`npm pack --dry-run` 文件表全部可解释，压缩包目标不超过 30 MB。
 
-状态：已完成。`files` 白名单仅保留 `lib`、`assets`、`docs`、`cordis.patch.yml`、`tools/` 内 21 个运行时 Agent 工具模块（`lib/register-tools.js` 导入的集合）、README 与第三方许可清单。移除未使用的 3 个 Noto 字重（约 24 MB）与旧版 pdf.js 阅读器全部资产（`pdfjs-app` 约 12 MB、`pdfjs-viewer` 约 6 MB、对应桥接与路由）；阅读工作区自 v12 起为唯一入口，工作台字体回退仅自托管 Regular/Bold 两个字重。候选包压缩后 18.5 MB（此前约 63 MB）；`npm pack --dry-run` 共 63 个文件且全部可解释。发布元数据测试新增白名单、体积门槛、运行时工具完整性回归与旧资产禁入校验。
+状态：已完成。`files` 白名单仅保留 `lib`、`assets`、`docs`、`cordis.patch.yml`、`tools/` 内 21 个运行时 Agent 工具模块（`lib/register-tools.js` 导入的集合）、README 与第三方许可清单。移除未使用的 3 个 Noto 字重（约 24 MB）与旧版 pdf.js 阅读器全部资产（`pdfjs-app` 约 12 MB、`pdfjs-viewer` 约 6 MB、对应桥接与路由）；阅读工作区自 v12 起为唯一入口，工作台字体回退仅自托管 Regular/Bold 两个字重。候选包压缩后 18.5 MB（此前约 63 MB）；最终发布包共 68 个文件且全部可解释。发布元数据测试新增白名单、体积门槛、运行时工具完整性回归与旧资产禁入校验。
 
 ### R4：依赖与兼容
 
@@ -66,7 +66,7 @@
 
 验收：不借用开发机全局依赖即可安装和运行；兼容矩阵有可复现结果。
 
-状态：已完成。`engines.node >= 22.13.0`（`node:sqlite` 免旗标下限，官方文档核实）；`@deepseek-ai/dsh-tools` 以 optional peer `^0.1.0-rc.13` 声明——裸装验证发现该精确版本不在公共 npm（公网止于 0.1.0-rc.8 / 0.1.1-rc.2），非可选 peer 会让任何安装以 ETARGET 失败，故保持 optional 并由 Harness Profile 在运行时提供（隔离 Profile 冒烟确认）。干净环境裸装候选包成功（127 个包，仅注册表拉取）；npm audit 无高危/严重项，3 项中等均来自 `exceljs → uuid@8.3.2` 链（上游未修复，书面说明已写入 README）；弃用告警 6 项（inflight/glob/rimraf/fstream/lodash.isequal/uuid）全部位于三个生产依赖的传递树内，属上游问题。兼容矩阵：Windows 实机 + Node 24.15 + Harness rc.13 已验证；其他 Node/平台未实测并在 README 标注。
+状态：已完成。`engines.node >= 22.13.0`（`node:sqlite` 免旗标下限，官方文档核实）；`@deepseek-ai/dsh-tools` 以 optional peer `>=0.1.0-rc.13 <0.2.0` 声明，并以 `0.1.1-rc.2` 开发依赖复现 CI。干净环境裸装候选包成功；npm audit 无高危/严重项，2 项中等均来自 `exceljs → uuid@8.3.2` 链（上游未修复，书面说明已写入 README/SECURITY）；弃用告警 6 项全部位于生产依赖的传递树内，属上游问题。兼容矩阵：Windows 实机 + Node 24.15 + Harness rc.13 已验证；GitHub Actions 已覆盖 Ubuntu/Windows × Node 22/24。
 
 ### R5：安全加固
 
@@ -90,7 +90,7 @@
 
 验收：CI 全绿，候选包安装闭环通过，工作区无未提交变更。
 
-状态：已完成（远端 CI 首跑待 R8 公开仓库）。新增 `.github/workflows/ci.yml`（ubuntu+windows × Node 22/24 矩阵：根测试、编辑器测试、打包与校验和产物上传）与跨平台 `scripts/run-tests.mjs`（解决 Windows 下 node --test 目录传参问题）；提交根 `package-lock.json` 供 CI 复现安装。CI 各步骤已在本地完整复演：`scripts/run-tests.mjs` 167/167、编辑器 7/7、`npm pack` + sha256（`a5be5b5a4be801dd9de416e505776575f3938731a10fd78f520cb465ca9ff921`，与 CHANGELOG/README 版本一致）。真实 Harness 端到端闭环在隔离全新 Profile 完成：安装→创建项目→上传 PDF→选择批注→Markdown/DOCX 导出→附件流→`plugin update`（配置层保留、数据保留）→`plugin remove`（配置层移除、`research.db` 保留）。过程中确认两个安装器已知问题并记录 memory：`dsh plugin add` 对含空格路径会拆参（tgz 与源码目录皆然，社区 npm/GitHub 安装不受影响）；`DSH_HOME` 环境变量必须使用正斜杠 Windows 路径，反斜杠经 bash 转写会被吞掉导致数据落点漂移。
+状态：已完成。新增 `.github/workflows/ci.yml`（ubuntu+windows × Node 22/24 矩阵：根测试、编辑器测试、打包与校验和产物上传）与跨平台 `scripts/run-tests.mjs`；提交根 `package-lock.json` 供 CI 复现安装。最终 GitHub Actions 运行全部通过：根测试 167/167、编辑器 7/7、打包与校验和产物生成成功。最终发布包 SHA-256 为 `437495d420fdff5268d8fb5431a06b8f7afcb7702ae4aa7133531f6bd9b2a8e7`。真实 Harness 端到端闭环在隔离全新 Profile 完成：安装→创建项目→上传 PDF→选择批注→Markdown/DOCX 导出→附件流→`plugin update`（配置层保留、数据保留）→`plugin remove`（配置层移除、`research.db` 保留）。过程中确认两个安装器已知问题并记录 memory：`dsh plugin add` 对含空格路径会拆参（tgz 与源码目录皆然，社区 npm/GitHub 安装不受影响）；`DSH_HOME` 环境变量必须使用正斜杠 Windows 路径，反斜杠经 bash 转写会被吞掉导致数据落点漂移。
 
 ### R8：公开与社区收录
 
@@ -98,12 +98,13 @@
 
 验收：公开安装命令从零可用，Release 与文档中的版本和校验和一致。
 
+状态：已完成。公开仓库为 `zhoupengyun572-cell/dsh-hana-research`，默认分支 `main`；已添加 `dsh-plugin` 等社区检索 topic，并发布预发行版 `v0.4.0-beta.1`。公开历史经过作者路径、内部项目名、`archive/`、`memory/` 与协作文件扫描。最终 CI 全绿，Release 附件及校验和与 CI artifact 一致。2026-08-28 在全新隔离 `DSH_HOME` 执行 `dsh plugin --profile web add github:zhoupengyun572-cell/dsh-hana-research#v0.4.0-beta.1` 成功，合成配置出现 `hana-research`。
+
 ## 当前已知风险基线
 
-- 标准 bundle 与正式包名已在 R1 完成；公开 npm/GitHub specifier 待 R8。
+- 标准 bundle、正式包名与公开 GitHub 标签安装均已完成；当前发布渠道为 GitHub Release，尚未发布到 npm。
 - 发布包已完成瘦身（R3）：`files` 白名单 + 旧 pdf.js 清理后压缩 18.5 MB；`tools/` 中 6 个开发脚本与 `shots/` 截图目录不进入发布包。
 - 作者项目种子已改为显式测试/开发 opt-in；运行时默认空数据库。
-- 依赖与兼容已在 R4 声明：`engines.node >= 22.13.0`；`dsh-tools` 为 optional peer（公网无 rc.13，由宿主提供）；剩余依赖风险仅 `exceljs → uuid@8.3.2` 中等告警与 6 项上游弃用告警，均已书面说明。
-- README、用户指南和维护者总览曾存在版本/schema 口径漂移。
-- README、用户指南和维护者总览曾存在版本/schema 口径漂移。
-- 尚无公开 Git 远程、CI、根 LICENSE、安全政策或一键安装验证。
+- 依赖与兼容已在 R4 声明：`engines.node >= 22.13.0`；`dsh-tools` 为 optional peer；剩余依赖风险仅 `exceljs → uuid@8.3.2` 的 2 项中等告警与 6 项上游弃用告警，均已书面说明。
+- Windows 已完成真实 Harness 端到端验收；Ubuntu 仅完成 CI 测试与打包验证，尚未进行完整图形界面人工验收。
+- Harness 仍处于开发者预览期，因此本版本保持 Beta/预发行标记。
