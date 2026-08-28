@@ -38,6 +38,7 @@ jobs:
         run: npm ci
       - name: Pack candidate and checksum
         run: |
+          mkdir -p output
           npm pack --pack-destination output
           ls output/*.tgz
           sha256sum output/*.tgz > output/dsh-hana-research-checksums.sha256
