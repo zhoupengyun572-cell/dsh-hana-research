@@ -82,6 +82,11 @@ test("public documentation reports the current release and schema", () => {
 });
 
 test("community runtime and public docs do not expose author-local paths", () => {
+	// Assemble private markers at runtime so the guard itself does not publish them verbatim.
+	const authorUser = String.fromCharCode(122, 104, 111, 117);
+	const authorPath = new RegExp(String.raw`C:\\Users\\${authorUser}`, "i");
+	const developmentPackage = new RegExp(["@local/", "dsh-hana-research"].join(""), "i");
+	const authorProjects = new RegExp([["Chat", "-SJT"].join(""), ["青少年", "情绪应对"].join("")].join("|"), "i");
 	const publicFiles = [
 		"README.md",
 		"docs/COMMUNITY_RELEASE_PLAN.md",
@@ -93,9 +98,9 @@ test("community runtime and public docs do not expose author-local paths", () =>
 	];
 	for (const relativePath of publicFiles) {
 		const content = fs.readFileSync(path.join(ROOT, relativePath), "utf8");
-		assert.doesNotMatch(content, /C:\\Users\\zhou/i, `${relativePath} contains an author-local path`);
-		assert.doesNotMatch(content, /@local\/dsh-hana-research/i, `${relativePath} contains the development package name`);
-		assert.doesNotMatch(content, /Chat-SJT|青少年情绪应对/i, `${relativePath} contains an author project`);
+		assert.doesNotMatch(content, authorPath, `${relativePath} contains an author-local path`);
+		assert.doesNotMatch(content, developmentPackage, `${relativePath} contains the development package name`);
+		assert.doesNotMatch(content, authorProjects, `${relativePath} contains an author project`);
 	}
 	const hostEntry = fs.readFileSync(path.join(ROOT, "lib/index.js"), "utf8");
 	assert.doesNotMatch(hostEntry, /dbPath:\s*store\.dbPath/, "health payload must not expose the absolute database path");
