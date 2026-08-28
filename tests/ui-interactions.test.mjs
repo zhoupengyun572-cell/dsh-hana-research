@@ -328,6 +328,8 @@ test('project navigation stays focused and task/note writes update the drawer in
   await wait(20);
   assert.equal(panel.querySelector('[data-drawer-tab="tasks"]').classList.contains('active'), true);
   assert.equal(panel.querySelectorAll('.drawer-note-item').length, 1, 'task notes should not be duplicated in regular notes');
+  assert.equal(panel.querySelectorAll('.note-file').length, 1, 'unlinked legacy notes are collected into one general note file');
+  assert.match(panel.querySelector('.note-library-head [data-note-count]').textContent, /1 份 · 1 条/);
   panel.querySelector('#task-content').value = '补充理论框架';
   panel.querySelector('#task-quick-form [type="submit"]').click();
   await wait(30);
@@ -340,12 +342,24 @@ test('project navigation stays focused and task/note writes update the drawer in
   assert.equal(window.document.querySelector('#drawer-panel'), panel);
 
   panel.querySelector('#drawer-note-content').value = '新的跨文献判断';
+  panel.querySelector('#drawer-note-paper').value = 'w1';
   panel.querySelector('#drawer-note-form [type="submit"]').click();
   await wait(30);
   const newNote = panel.querySelector('[data-note-id="n4"]');
   assert.ok(newNote);
+  assert.equal(panel.querySelectorAll('.note-file').length, 2, 'notes are grouped into one file per source paper');
+  assert.match(newNote.closest('.note-file').querySelector('.note-file-title b').textContent, /需要补证据的文献/);
   assert.equal(window.document.querySelector('#drawer-panel'), panel);
-  newNote.querySelector('[data-note-remove]').click();
+  newNote.querySelector('[data-note-edit]').click();
+  assert.equal(newNote.querySelector('[data-note-editor]').hidden, false, 'each note exposes an inline edit/annotation form');
+  newNote.querySelector('[name="content"]').value = '新的跨文献判断（已批注）';
+  newNote.querySelector('[name="tags"]').value = '关键发现，待核对';
+  newNote.querySelector('[data-note-editor] [type="submit"]').click();
+  await wait(30);
+  const editedNote = panel.querySelector('[data-note-id="n4"]');
+  assert.match(editedNote.querySelector('.note-entry-content').textContent, /已批注/);
+  assert.match(editedNote.querySelector('.note-tags').textContent, /关键发现/);
+  editedNote.querySelector('[data-note-remove]').click();
   await wait(30);
   assert.equal(panel.querySelector('[data-note-id="n4"]'), null);
   assert.equal(window.document.querySelector('#drawer-panel'), panel);

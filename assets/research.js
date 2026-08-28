@@ -3982,9 +3982,44 @@ function drawerRelationsHtml(projectId, relations, papers) {
   return `<details class="drawer-relations drawer-disclosure" id="drawer-relations"><summary><span>论证链</span><b>${relations.length} 条关系</b></summary><div class="drawer-disclosure-body"><div class="section-heading-row"><p class="drawer-empty-hint">用支持、反驳和引用关系组织证据。</p><button type="button" class="chip-small" data-relation-open-add>＋ 建立关系</button></div>${relations.length ? `<ul class="relation-list">${relations.map(rel => `<li class="relation-item" data-relation-id="${escapeAttr(rel.id)}"><span class="relation-flow"><b>${escapeHtml(rel.fromTitle)}</b> <em class="relation-kind ${escapeAttr(rel.relation)}">${RELATION_LABELS[rel.relation]}</em> <b>${escapeHtml(rel.toTitle)}</b></span>${rel.note ? `<small>${escapeHtml(rel.note)}</small>` : ''}<button type="button" class="chip-small" data-relation-remove="${escapeAttr(rel.id)}" title="删除该关系">×</button></li>`).join('')}</ul>` : ''}<div class="drawer-tools"><button type="button" class="button" data-evidence-matrix-open>证据矩阵</button><button type="button" class="button" data-export-notes-open>导出笔记</button></div></div></details>`;
 }
 
-function drawerNotesHtml(projectId, notes, papers) {
+function drawerNotesHtml(projectId, notes, papers, openKeys = new Set()) {
   const projectNotes = notes.filter(note => !(Array.isArray(note.tags) && note.tags.includes('研究任务')));
-  return `<div class="drawer-notes-section" id="drawer-notes-section"><h3>项目笔记<span data-note-count>${projectNotes.length ? ` ${projectNotes.length} 条` : ''}</span></h3><form id="drawer-note-form" class="drawer-note-form"><label class="sr-only" for="drawer-note-content">项目笔记内容</label><textarea id="drawer-note-content" maxlength="10000" placeholder="记录研究思路、发现或评论（可关联另一篇文献作对比）…"></textarea><div class="drawer-note-row"><label for="drawer-note-linked" class="sr-only">关联文献</label><select id="drawer-note-linked" title="关联另一篇项目内文献（跨文献对比）"><option value="">关联文献（可选）</option>${papers.map(paper => `<option value="${escapeAttr(paper.id)}">${escapeHtml(paper.title.slice(0, 40))}</option>`).join('')}</select><button type="submit" class="button primary">保存笔记</button></div></form><div class="drawer-note-list">${projectNotes.slice(0, 50).map(noteItemHtml).join('') || '<p class="drawer-empty-hint note-empty">还没有项目笔记。记录一个研究判断或跨文献比较。</p>'}</div></div>`;
+  const paperMap = new Map(papers.map(paper => [paper.id, paper]));
+  const groups = new Map();
+  for (const note of projectNotes) {
+    const key = note.paperId || 'project-general';
+    if (!groups.has(key)) {
+      const paper = note.paperId ? paperMap.get(note.paperId) : null;
+      groups.set(key, {
+        key,
+        title: paper?.title || note.paperTitle || '项目通用笔记',
+        venue: paper?.venue || note.paperVenue || '',
+        year: paper?.year || note.paperYear || '',
+        notes: [],
+      });
+    }
+    groups.get(key).notes.push(note);
+  }
+  const files = [...groups.values()]
+    .map(group => ({
+      ...group,
+      notes: group.notes.sort((a, b) => String(a.pageNumber || 99999).localeCompare(String(b.pageNumber || 99999), undefined, { numeric: true }) || String(a.createdAt).localeCompare(String(b.createdAt))),
+      lastUpdated: group.notes.reduce((latest, note) => String(note.updatedAt || note.createdAt || '') > latest ? String(note.updatedAt || note.createdAt || '') : latest, '')
+    }))
+    .sort((a, b) => b.lastUpdated.localeCompare(a.lastUpdated));
+  const shouldOpen = key => openKeys.has(key) || (files.length === 1 && openKeys.size === 0);
+  const fileHtml = files.map(file => {
+    const lastUpdated = file.lastUpdated;
+    return `<details class="note-file" data-note-file="${escapeAttr(file.key)}" ${shouldOpen(file.key) ? 'open' : ''}>
+      <summary><span class="note-file-mark">文</span><span class="note-file-title"><b>${escapeHtml(file.title)}</b><small>${[file.venue, file.year].filter(Boolean).map(escapeHtml).join(' · ') || '项目级研究记录'} · ${file.notes.length} 条笔记${lastUpdated ? ` · ${escapeHtml(formatProjectTime(lastUpdated))}` : ''}</small></span><span class="note-file-count">${file.notes.length}</span><span class="note-file-chevron">⌄</span></summary>
+      <div class="note-file-sheet"><header><span>DOCUMENT NOTES</span><p>该文献产生的摘录、判断与批注已归入同一份连续文件。</p></header><div class="note-file-entries">${file.notes.map((note, index) => noteItemHtml(note, index)).join('')}</div></div>
+    </details>`;
+  }).join('');
+  return `<section class="drawer-notes-section" id="drawer-notes-section">
+    <header class="note-library-head"><div><span class="composer-kicker">LITERATURE NOTE FILES</span><h3>文献笔记文件 <em data-note-count>${files.length} 份 · ${projectNotes.length} 条</em></h3><p>按来源文献归档。展开一份文件，即可连续查看并修改该文献产生的全部笔记。</p></div><a class="button" href="${escapeAttr(apiUrl(`/projects/${encodeURIComponent(projectId)}/notes/file`))}" download>下载总汇 · MD</a></header>
+    <details class="note-compose"><summary>＋ 新增一条研究笔记</summary><form id="drawer-note-form" class="drawer-note-form"><label for="drawer-note-paper"><span>归入文献</span><select id="drawer-note-paper"><option value="">项目通用笔记</option>${papers.map(paper => `<option value="${escapeAttr(paper.id)}">${escapeHtml(paper.title)}</option>`).join('')}</select></label><label for="drawer-note-content"><span>笔记与批注</span><textarea id="drawer-note-content" maxlength="10000" placeholder="记录研究判断、方法评价、疑问或与其他研究的比较…"></textarea></label><div class="drawer-note-submit"><small>保存后会自动进入所选文献的笔记文件。</small><button type="submit" class="button primary">保存到文件</button></div></form></details>
+    <div class="note-file-list">${fileHtml || '<div class="note-library-empty"><b>还没有文献笔记文件</b><p>新增第一条笔记时选择来源文献，系统会自动建立并持续汇总。</p></div>'}</div>
+  </section>`;
 }
 
 const ROB_JUDGMENT_LABELS = { pending:'未评定',low:'低风险',some_concerns:'部分担忧',high:'高风险',moderate:'中等风险',serious:'严重风险',critical:'极严重风险',no_information:'信息不足' };
@@ -4035,8 +4070,15 @@ function renderGradeEditor(ctx,outcomeId){
   layer.querySelector('form').addEventListener('submit',async e=>{e.preventDefault();const form=e.currentTarget;const domains=[...form.querySelectorAll('[data-grade-domain]')].map(row=>({domainId:row.dataset.gradeDomain,level:Number(row.querySelector('select').value),rationale:row.querySelector('input').value}));const body={title:form.elements.title.value,importance:form.elements.importance.value,studyDesign:form.elements.studyDesign.value,studies:form.elements.studies.value,participants:form.elements.participants.value,effectEstimate:form.elements.effectEstimate.value,confirmedCertainty:form.elements.confirmedCertainty.value,confirmationNote:form.elements.confirmationNote.value,domains};const url=outcomeId?`/projects/${encodeURIComponent(ctx.projectId)}/grade/outcomes/${encodeURIComponent(outcomeId)}`:`/projects/${encodeURIComponent(ctx.projectId)}/grade/outcomes`;const action=await runButtonAction(e.submitter,{key:`grade-save:${outcomeId||'new'}`,pendingLabel:'保存中…',errorPrefix:'GRADE 评定保存失败'},()=>api(url,{method:outcomeId?'PUT':'POST',body:JSON.stringify(body)}));if(action.ok){ctx.quality=await api(`/projects/${encodeURIComponent(ctx.projectId)}/quality`);renderQualityModal(ctx);}});
 }
 
-function noteItemHtml(note) {
-  return `<article class="drawer-note-item" data-note-id="${escapeAttr(note.id)}"><div class="drawer-note-meta"><span>${escapeHtml(note.paperTitle || '项目通用')}${note.pageNumber ? ` · 第 ${note.pageNumber} 页` : ''}</span>${note.linkedPaperTitle ? `<span class="note-linked" title="跨文献关联">↔ ${escapeHtml(note.linkedPaperTitle)}</span>` : ''}${note.tags?.length ? `<span class="note-tags">${note.tags.map(tag => `#${escapeHtml(tag)}`).join(' ')}</span>` : ''}</div><p>${escapeHtml(note.content.slice(0, 200))}${note.content.length > 200 ? '…' : ''}</p><button type="button" class="chip-small" data-note-remove="${escapeAttr(note.id)}" title="删除这条笔记">删除</button></article>`;
+function noteItemHtml(note, index = 0) {
+  const tagsValue = (note.tags || []).join('，');
+  return `<article class="drawer-note-item" data-note-id="${escapeAttr(note.id)}">
+    <div class="drawer-note-meta"><span class="note-entry-index">${String(index + 1).padStart(2, '0')}</span><span>${note.pageNumber ? `第 ${note.pageNumber} 页` : '无页码'}</span>${note.linkedPaperTitle ? `<span class="note-linked" title="跨文献关联">↔ ${escapeHtml(note.linkedPaperTitle)}</span>` : ''}${note.tags?.length ? `<span class="note-tags">${note.tags.map(tag => `#${escapeHtml(tag)}`).join(' ')}</span>` : ''}<time>${escapeHtml(formatProjectTime(note.updatedAt || note.createdAt))}</time></div>
+    ${note.quote ? `<blockquote><span>原文摘录</span>${escapeHtml(note.quote)}</blockquote>` : ''}
+    <div class="note-entry-content">${escapeHtml(note.content || '尚未填写笔记内容')}</div>
+    <div class="note-entry-actions"><button type="button" class="chip-small" data-note-edit="${escapeAttr(note.id)}">修改 / 批注</button><button type="button" class="chip-small danger" data-note-remove="${escapeAttr(note.id)}">删除</button></div>
+    <form class="note-inline-editor" data-note-editor="${escapeAttr(note.id)}" hidden><label><span>笔记与批注</span><textarea name="content" maxlength="10000" required>${escapeHtml(note.content || '')}</textarea></label><div class="note-editor-meta"><label><span>页码</span><input name="pageNumber" type="number" min="1" value="${note.pageNumber || ''}" placeholder="—"></label><label><span>标签</span><input name="tags" value="${escapeAttr(tagsValue)}" placeholder="用逗号分隔"></label></div><div class="note-editor-actions"><button type="button" class="button" data-note-edit-cancel>取消</button><button type="submit" class="button primary">保存修改</button></div></form>
+  </article>`;
 }
 
 function renderDrawer(ctx) {
@@ -4339,66 +4381,92 @@ function bindDrawer(panel, ctx) {
     const role = chip.dataset.drawerRoleFilter;
     panel.querySelectorAll('[data-drawer-role]').forEach(article => article.classList.toggle('filtered', role !== '全部' && article.dataset.drawerRole !== role));
   });
-  // 项目笔记：新建 / 删除
+  // 文献笔记文件：按来源文献归档；文件内连续查看，逐条修改 / 批注。
   const regularNotes = notes.filter(note => !(Array.isArray(note.tags) && note.tags.includes('研究任务')));
-  const refreshNoteCount = () => {
-    const count = panel.querySelector('[data-note-count]');
-    if (count) count.textContent = regularNotes.length ? ` ${regularNotes.length} 条` : '';
+  const renderNoteLibrary = (focusKey = null) => {
+    const current = panel.querySelector('#drawer-notes-section');
+    if (!current) return;
+    const openKeys = new Set([...current.querySelectorAll('[data-note-file][open]')].map(item => item.dataset.noteFile));
+    if (focusKey) openKeys.add(focusKey);
+    current.outerHTML = drawerNotesHtml(projectId, regularNotes, papers, openKeys);
+    bindNoteLibrary();
   };
-  const bindNoteRemove = button => button.addEventListener('click', async () => {
-    const noteId = button.dataset.noteRemove;
-    const removedNote = regularNotes.find(note => note.id === noteId);
-    const action = await runButtonAction(button, {
-      key: `note-remove:${noteId}`,
-      errorPrefix: '笔记删除失败',
-    }, () => api(`/projects/${encodeURIComponent(projectId)}/notes/${encodeURIComponent(noteId)}`, { method: 'DELETE' }));
-    if (!action.ok) return;
-    const index = regularNotes.findIndex(note => note.id === noteId);
-    if (index >= 0) regularNotes.splice(index, 1);
-    button.closest('[data-note-id]')?.remove();
-    const list = panel.querySelector('.drawer-note-list');
-    if (list && !list.querySelector('[data-note-id]')) list.innerHTML = '<p class="drawer-empty-hint note-empty">还没有项目笔记。记录一个研究判断或跨文献比较。</p>';
-    refreshNoteCount();
-    showUndoToast('笔记已删除。', async () => {
-      if (!removedNote) return;
-      const restored = await api(`/projects/${encodeURIComponent(projectId)}/notes`, {
-        method: 'POST',
-        body: JSON.stringify({ content: removedNote.content, tags: removedNote.tags || [], paperId: removedNote.paperId || null, linkedPaperId: removedNote.linkedPaperId || null }),
-      });
-      regularNotes.unshift(restored.note);
-      if (panel.isConnected) {
-        const noteList = panel.querySelector('.drawer-note-list');
-        noteList.querySelector('.note-empty')?.remove();
-        noteList.insertAdjacentHTML('afterbegin', noteItemHtml(restored.note));
-        bindNoteRemove(noteList.querySelector(`[data-note-remove="${cssEscape(restored.note.id)}"]`));
-        refreshNoteCount();
-      }
+  const bindNoteLibrary = () => {
+    const section = panel.querySelector('#drawer-notes-section');
+    if (!section) return;
+    section.querySelector('#drawer-note-form')?.addEventListener('submit', async event => {
+      event.preventDefault();
+      const noteForm = event.currentTarget;
+      const content = noteForm.querySelector('#drawer-note-content').value.trim();
+      if (!content) { showNotice('笔记内容不能为空。', true); return; }
+      const paperId = noteForm.querySelector('#drawer-note-paper').value || null;
+      const submitButton = noteForm.querySelector('[type="submit"]');
+      const action = await runButtonAction(submitButton, {
+        key: `note-create:${projectId}`,
+        slowMessage: '正在保存到文献笔记文件…',
+        errorPrefix: '笔记保存失败',
+      }, () => api(`/projects/${encodeURIComponent(projectId)}/notes`, { method: 'POST', body: JSON.stringify({ content, paperId }) }));
+      if (!action.ok) return;
+      regularNotes.unshift(action.value.note);
+      renderNoteLibrary(action.value.note.paperId || 'project-general');
+      showNotice('已保存到对应文献的笔记文件。');
     });
-  });
-  panel.querySelector('#drawer-note-form')?.addEventListener('submit', async event => {
-    event.preventDefault();
-    const noteForm = event.currentTarget;
-    const content = panel.querySelector('#drawer-note-content').value.trim();
-    if (!content) { showNotice('笔记内容不能为空。', true); return; }
-    const linkedPaperId = panel.querySelector('#drawer-note-linked').value || null;
-    const submitButton = noteForm.querySelector('[type="submit"]');
-    const action = await runButtonAction(submitButton, {
-      key: `note-create:${projectId}`,
-      slowMessage: '正在保存笔记…',
-      errorPrefix: '笔记保存失败',
-    }, () => api(`/projects/${encodeURIComponent(projectId)}/notes`, { method: 'POST', body: JSON.stringify({ content, linkedPaperId }) }));
-    if (!action.ok) return;
-    const note = action.value.note;
-    regularNotes.unshift(note);
-    const list = panel.querySelector('.drawer-note-list');
-    list.querySelector('.note-empty')?.remove();
-    list.insertAdjacentHTML('afterbegin', noteItemHtml(note));
-    bindNoteRemove(list.querySelector(`[data-note-remove="${cssEscape(note.id)}"]`));
-    noteForm.reset();
-    refreshNoteCount();
-    showNotice('笔记已保存。');
-  });
-  panel.querySelectorAll('[data-note-remove]').forEach(bindNoteRemove);
+    section.querySelectorAll('[data-note-edit]').forEach(button => button.addEventListener('click', () => {
+      const item = button.closest('[data-note-id]');
+      if (!item) return;
+      item.classList.add('editing');
+      item.querySelector('[data-note-editor]').hidden = false;
+      item.querySelector('[name="content"]')?.focus();
+    }));
+    section.querySelectorAll('[data-note-edit-cancel]').forEach(button => button.addEventListener('click', () => {
+      const item = button.closest('[data-note-id]');
+      if (!item) return;
+      item.classList.remove('editing');
+      button.closest('[data-note-editor]').hidden = true;
+    }));
+    section.querySelectorAll('[data-note-editor]').forEach(editor => editor.addEventListener('submit', async event => {
+      event.preventDefault();
+      const noteId = editor.dataset.noteEditor;
+      const note = regularNotes.find(item => item.id === noteId);
+      if (!note) return;
+      const content = editor.elements.content.value.trim();
+      if (!content) { showNotice('笔记与批注不能为空。', true); return; }
+      const tags = editor.elements.tags.value.split(/[，,]/).map(tag => tag.trim().replace(/^#/, '')).filter(Boolean);
+      const pageNumber = editor.elements.pageNumber.value ? Number(editor.elements.pageNumber.value) : null;
+      const submitButton = editor.querySelector('[type="submit"]');
+      const action = await runButtonAction(submitButton, {
+        key: `note-update:${noteId}`,
+        pendingLabel: '保存中…',
+        errorPrefix: '笔记修改失败',
+      }, () => api(`/projects/${encodeURIComponent(projectId)}/notes/${encodeURIComponent(noteId)}`, { method: 'PATCH', body: JSON.stringify({ content, tags, pageNumber }) }));
+      if (!action.ok) return;
+      Object.assign(note, action.value.note);
+      renderNoteLibrary(note.paperId || 'project-general');
+      showNotice('笔记与批注已更新。');
+    }));
+    section.querySelectorAll('[data-note-remove]').forEach(button => button.addEventListener('click', async () => {
+      const noteId = button.dataset.noteRemove;
+      const removedNote = regularNotes.find(note => note.id === noteId);
+      if (!removedNote) return;
+      const action = await runButtonAction(button, {
+        key: `note-remove:${noteId}`,
+        errorPrefix: '笔记删除失败',
+      }, () => api(`/projects/${encodeURIComponent(projectId)}/notes/${encodeURIComponent(noteId)}`, { method: 'DELETE' }));
+      if (!action.ok) return;
+      const index = regularNotes.findIndex(note => note.id === noteId);
+      if (index >= 0) regularNotes.splice(index, 1);
+      renderNoteLibrary(removedNote.paperId || 'project-general');
+      showUndoToast('笔记已从文献文件中删除。', async () => {
+        const restored = await api(`/projects/${encodeURIComponent(projectId)}/notes`, {
+          method: 'POST',
+          body: JSON.stringify({ content: removedNote.content, tags: removedNote.tags || [], paperId: removedNote.paperId || null, linkedPaperId: removedNote.linkedPaperId || null }),
+        });
+        regularNotes.unshift(restored.note);
+        if (panel.isConnected) renderNoteLibrary(restored.note.paperId || 'project-general');
+      });
+    }));
+  };
+  bindNoteLibrary();
   // 上传 / 阅读 / 翻译
   panel.querySelector('[data-upload-pdf]')?.addEventListener('change', event => uploadProjectPdf(projectId, event.target));
   panel.querySelectorAll('[data-open-reader]').forEach(button => button.addEventListener('click', () => openPdfReader(projectId, button.dataset.openReader)));
