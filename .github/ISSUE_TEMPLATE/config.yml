@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Security report / 安全报告
+    url: https://github.com/zhoupengyun572-cell/dsh-hana-research/security/policy
+    about: 请按安全政策私下报告漏洞，不要公开敏感细节。
+  - name: Usage guide / 使用指南
+    url: https://github.com/zhoupengyun572-cell/dsh-hana-research/blob/main/docs/USER_GUIDE.md
+    about: 提交问题前可先查看安装、操作流程、FAQ 与备份恢复说明。

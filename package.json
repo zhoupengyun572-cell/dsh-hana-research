@@ -22,6 +22,7 @@
   "files": [
     "lib",
     "assets",
+    "docs/images",
     "docs/PLUGIN_OVERVIEW.md",
     "docs/USER_GUIDE.md",
     "cordis.patch.yml",
