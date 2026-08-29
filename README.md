@@ -1,143 +1,159 @@
-# DSH Hana Research（dsh-hana-research）
+# DSH Hana Research
 
-面向心理学与社会科学研究的本地文献工作台，以静态 Cordis 插件形式运行于 DeepSeek Harness。
+<p align="center">
+  <strong>为心理学与社会科学研究打造的本地优先文献工作台</strong><br />
+  在 DeepSeek Harness 中完成文献发现、PDF 精读、证据整理、系统综述与研究写作。
+</p>
 
-- **插件关键内容总览**：`docs/PLUGIN_OVERVIEW.md`
-- **用户使用说明书（含工作流程图与功能树形图）**：`docs/USER_GUIDE.md`
-- 第三方依赖与许可证：`THIRD_PARTY_LICENSES.md`
+<p align="center">
+  <a href="https://github.com/zhoupengyun572-cell/dsh-hana-research/releases/tag/v0.4.0-beta.1"><img alt="Release" src="https://img.shields.io/github/v/release/zhoupengyun572-cell/dsh-hana-research?include_prereleases&style=flat-square"></a>
+  <a href="https://github.com/zhoupengyun572-cell/dsh-hana-research/actions/workflows/ci.yml"><img alt="CI" src="https://img.shields.io/github/actions/workflow/status/zhoupengyun572-cell/dsh-hana-research/ci.yml?branch=main&style=flat-square&label=CI"></a>
+  <a href="LICENSE"><img alt="MIT License" src="https://img.shields.io/badge/license-MIT-blue.svg?style=flat-square"></a>
+  <img alt="Node.js 22.13+" src="https://img.shields.io/badge/Node.js-%E2%89%A522.13-43853d?style=flat-square&logo=node.js&logoColor=white">
+  <img alt="DeepSeek Harness plugin" src="https://img.shields.io/badge/DeepSeek_Harness-plugin-4b6bfb?style=flat-square">
+</p>
 
-## 包结构
+<p align="center">
+  <b>中文</b> · <a href="README.en.md">English</a> ·
+  <a href="docs/USER_GUIDE.md">使用指南</a> ·
+  <a href="https://github.com/zhoupengyun572-cell/dsh-hana-research/issues">问题反馈</a>
+</p>
 
-- `package.json` — `exports["./client"]` + `dsh.client.platform: "web"`
-- `lib/index.js` — 宿主半：数据层初始化 + 业务 API + 页面/资产路由 + 期刊同步
-- `lib/store.js` — 数据层（node:sqlite，schema **v19**：文献/项目/批注/逐句笔记/阅读状态/系统综述筛选/研究编码/风险偏倚/GRADE/引文）
-- `lib/annotation-migrate.js` — 旧自研批注 → EmbedPDF 标准批注换算与序列化（纯函数）
-- `lib/api.js` — REST API（检索/项目/批注/笔记/翻译/期刊 + v12 阅读工作区接口）
-- `lib/exporters.js` — 原生 DOCX/PDF 项目笔记与 CSV/XLSX 证据矩阵导出（v29）
-- `lib/pages.js` — `/ui/hana-research/*` 页面壳（文献中心/项目库/卡片/阅读工作区）
-- `assets/research.js|css` — 原生 JS 单页应用（文献中心 + 项目库）
-- `assets/reader-workbench.js|css` — **阅读工作区前端**（React + EmbedPDF + Tiptap，esbuild 构建产物）
-- `assets/vendor/embedpdf/` — PDFium WASM + 简体中文 fallback 字体（自托管，无 CDN）
-- `web/` — 阅读工作区**源码与构建**（React 18 + @embedpdf/react-pdf-viewer 2.15 + @tiptap 3.30，`npm run build` 输出到 assets/）
-- `tests/*.test.mjs` — 数据层/API 测试；`web/tests/` — Markdown/引文节点测试
+![Hana Research 阅读工作台：PDF、批注与结构化文献笔记](docs/images/reader-workspace.png)
 
-## 阅读工作区（v12）
+> [!IMPORTANT]
+> 当前版本为 `0.4.0-beta.1`，面向 DeepSeek Harness 开发者预览版。Windows 已完成真实端到端验收；Ubuntu/Windows × Node 22/24 已通过自动化 CI。
 
-三栏 Zotero 式文献阅读：左侧（目录/缩略图/搜索/批注列表，可折叠可调宽）· 中央 EmbedPDF（渲染/缩放/连续滚动/选择/高亮/下划线/删除线/便签/评论/自由文本/批注侧栏/深浅色/进度恢复/批注导入导出/导出带批注 PDF）· 右侧 Tiptap 文献笔记（标题/列表/任务/引用/代码/链接/表格/撤销重做/Markdown 导入导出/自动保存/字数/引文卡片一键跳回原文）。
+## 它解决什么问题
 
-入口不变：项目抽屉「打开阅读器」→ `/ui/hana-research/reader?projectId&attachmentId`。
-旧官方 pdf.js viewer 回退（`/reader-legacy`）已随社区发布瘦身移除（v12 起工作区即为唯一默认入口）。
+研究资料经常散落在检索网页、PDF 阅读器、表格和笔记软件中。Hana Research 把这些环节收进同一个可追溯工作流：
 
-## 研究资料导出（v29）
+1. 从 OpenAlex、Crossref、arXiv 和 PubMed 发现文献，或直接上传本地 PDF。
+2. 按研究问题建立项目，让每篇文献、批注、任务和笔记都有明确归属。
+3. 在三栏阅读器中精读 PDF，把高亮、原文摘录和研究者判断连接到具体页码。
+4. 需要系统综述时，再展开双阶段筛选、PRISMA、研究编码、偏倚风险和 GRADE。
+5. 导出项目笔记、证据矩阵、引文和带批注 PDF，并把当前上下文交给 Harness Agent 协作。
 
-- 项目笔记：Markdown、原生 `.docx`、内嵌中文字体的可搜索 `.pdf`
-- 证据矩阵：UTF-8 BOM `.csv`、带冻结标题/筛选/语义列宽的原生 `.xlsx`、Markdown
-- 原生文件由插件服务端生成，不依赖浏览器打印或伪装扩展名
+## 核心能力
 
-## 系统综述筛选（v30）
+| 工作阶段 | Hana Research 提供什么 |
+|---|---|
+| 文献发现 | 四源并发检索、AI 解读、保存检索、新结果提醒、期刊同步、自定义期刊源 |
+| 项目组织 | 项目库、文献角色、阅读状态、优先级、研究任务、跨文献关系与下一步建议 |
+| PDF 精读 | 目录/缩略图/搜索、彩色批注、逐页定位、阅读进度、结构化摘录与文献总结 |
+| 系统综述 | 纳排标准、题录/摘要与全文双阶段筛选、双人独立判断、冲突仲裁、PRISMA 2020 |
+| 证据综合 | 自定义研究编码、RoB 2 / ROBINS-I、GRADE、证据矩阵与论证链 |
+| 导出与协作 | Markdown、DOCX、PDF、CSV、XLSX、BibTeX、RIS；20 个 Harness Agent 工具 |
 
-- 每个项目独立维护纳入与排除标准，支持“标准名称｜操作性说明”
-- 题录/摘要筛选与全文筛选分别记录：待筛选、纳入、待定、排除
-- 排除必须填写理由，可直接选择项目排除标准；判断、理由与更新时间可追溯
-- 证据页显示双阶段进度与最终纳入数；全文阶段在题录纳入/待定后开放
-- CSV、XLSX 与 Markdown 证据矩阵同步包含两阶段结论及排除理由
+系统综述工具采用渐进披露：如果你只想收藏、阅读和记笔记，可以跳过筛选、编码与质量评定。
 
-## 自定义研究编码（v31）
+## 界面预览
 
-- 每个项目可独立定义文本、数字、单选、多选、是/否五类证据字段，并设置操作性定义、必填状态与导出顺序
-- 内置通用实证研究、系统综述/元分析、量表开发与验证三套模板；应用模板只更新草稿，保存后才生效
-- 每篇文献在证据页折叠填写结构化编码，显示已编码数量和必填完成状态
-- 删除已有编码值的字段默认被阻止，二次确认后才执行级联删除
+<table>
+  <tr>
+    <td width="50%" valign="top">
+      <img src="docs/images/project-library.png" alt="Hana Research 项目库" /><br />
+      <sub><b>项目库</b>：每个研究问题拥有独立的文献、PDF、任务和笔记空间。</sub>
+    </td>
+    <td width="50%" valign="top">
+      <img src="docs/images/project-overview.png" alt="Hana Research 项目概览" /><br />
+      <sub><b>项目概览</b>：聚焦下一步、最近活动和证据缺口，避免把所有工具堆在首屏。</sub>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" valign="top">
+      <img src="docs/images/evidence-workflow.png" alt="Hana Research 系统综述与项目文献" /><br />
+      <sub><b>证据工作流</b>：按需展开筛选、数据提取和质量评定。</sub>
+    </td>
+    <td width="50%" valign="top">
+      <img src="docs/images/reader-workspace.png" alt="Hana Research PDF 阅读工作台" /><br />
+      <sub><b>阅读工作台</b>：原文、批注与结构化文献笔记保持同屏并可回到来源页。</sub>
+    </td>
+  </tr>
+</table>
 
-## 应用壳与客户端路由（v38）
+截图使用合成演示 PDF 与公开书目信息，不包含真实用户项目或私人研究数据。
 
-- 常驻顶栏：品牌区（文献研究台）+ 命令面板/设置工具组，sticky 毛玻璃跟随宿主主题，窄屏自动紧凑
-- **工作区切换器按嵌入态自适应**：内嵌于 Harness 时隐藏（宿主已自带「文献中心/项目库」页签，v23 裁决插件内不重复导航）；独立打开深链接时显示，页面可互切
-- **SPA 路由**：同一文档内切换——pushState + View Transitions 形变过渡，无整页白屏重载；浏览器前进/后退可用；深链接与旧书签完全兼容；Ctrl/Cmd/中键点击仍由浏览器新开标签
-- 切换时自动收起项目抽屉、保存文献筛选现场、按视图恢复滚动位置
-- 右键上下文菜单：文献卡（阅读器打开/复制标题/复制 DOI）、项目卡（打开详情/复制名称），pointer 定位视口钳制、Esc/外点关闭
-- 阅读器保持整页跳转（编辑器窗口隐喻）；Alt P 命令面板跨区跳转改走路由
-- 安全存储层：宿主以受限方式嵌入导致 localStorage 被拒时启动不崩，静默回退内存态
+## 安装
 
-## 项目详情渐进披露（v38c）
-
-- “证据”页不再同时堆叠筛选、研究编码和质量评定三个完整工作台；改为带用途说明的三步可选流程，默认全部折叠，且同一时间只展开一项
-- 明确提示：仅用于收藏、阅读和记笔记时可跳过系统综述工具，降低新用户理解成本
-- 文献卡默认只显示来源、标题、PDF/角色/筛选状态与阅读入口；筛选结论、全文获取、项目角色和研究编码收进“整理这篇文献”
-- 翻译、译文和建立关系收进单篇文献“更多”，减少常驻按钮数量
-- 移除与项目首页信息重复的右侧上下文栏，项目详情恢复全宽；Agent 入口移入项目“更多”菜单
-- 桌面与 430px 窄屏均采用相同的信息层级，窄屏无横向溢出
-
-## 排版舒适化与主题适配（v37）
-
-- 全库消灭 <11px 字号与半像素取值：20 种字规格收敛为 16 种，最小可读字号 11px；阅读工作台笔记与 AI 简报正文升至 13px
-- v35 质量评定（RoB/GRADE）编辑器间距整体放宽一档
-- RoB 交通灯、GRADE 确定性色块改为"语义色相 × 卡片底"混合——宿主切深色后不再是刺眼浅色块；任务优先级、重复文献绿色系、选择浮层中性灰全部接入 token
-- border-radius 从 13 种散值收敛到 4 个 token 档位（6/8/10/12px + 药丸/圆形/发丝特例），234 处声明 token 化
-- 链接型按钮（导出下载 `<a class="button">`）不再继承浏览器默认蓝
-
-## 统一弹层与通知（v36）
-
-- 全部模态共用同一个弹层工厂：Tab 焦点圈闭、关闭后焦点还原到触发按钮、遮罩点击关闭（带拖拽误触保护）、入场自动聚焦与 aria 兜底
-- 新增样式化确认 / 选择 / 输入对话框，替换全部 7 处原生 `window.confirm`；破坏性操作使用红色强调确认键
-- 三套互不相干的 toast（reader-toast / undo-toast / #notice）合并为单一通知中心：底部居中堆叠、悬停暂停倒计时、支持「撤销」等内联动作按钮
-- 页眉常驻「命令面板」「设置」入口按钮，孤儿功能修复；命令面板快捷键定为 Alt P（Ctrl/⌘K 继续让给宿主 Harness）
-- 弹层内按 Esc 始终能关层（输入态不再拦截）；z-index 收敛为 menu/toast/modal 三个 token
-
-## 质量评定与证据确定性（v35）
-
-- 按具体结局保存 RoB 2、ROBINS-I 与心理学通用框架的领域判断和支持依据
-- 双人评定分别保存 A/B 原始记录；分歧逐领域裁决，工具版本切换不会串用历史结论
-- ROBINS-I V2 明确标注为 2025 草案；导出保留模板版本和完整审计链
-- GRADE 按关键/重要结局记录升降级依据，区分系统建议等级与研究者确认等级
-- 风险偏倚矩阵、GRADE 证据概况和完整 JSON 审计数据可直接导出
-- Markdown、CSV 和 XLSX 证据矩阵动态追加项目字段；XLSX 额外生成“编码字典”工作表
-
-## 安装（Beta 候选版）
-
-推荐固定到已发布的 Git tag 安装：
+需要已安装的 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) 和 `web` Profile。推荐固定到已发布标签：
 
 ```powershell
 dsh plugin --profile web add github:zhoupengyun572-cell/dsh-hana-research#v0.4.0-beta.1
 ```
 
-安装命令会读取包内 `dsh.bundle`，自动把 Hana Research 配置层加入 `web` Profile，无需手工修改 `cordis.patch.yml`。安装完成后重启 DeepSeek Harness。首次启动会自动迁移到当前 schema v19；跨版本升级会在需要时保留迁移前快照，旧批注在新阅读器打开对应 PDF 时自动换算导入。
+安装完成后重启 Harness。插件会通过包内 `dsh.bundle` 自动加入 `web` Profile，无需手工编辑配置。
 
-也可以从 [GitHub Release](https://github.com/zhoupengyun572-cell/dsh-hana-research/releases/tag/v0.4.0-beta.1) 下载 `.tgz`，再把本地文件路径传给同一条 `add` 命令。建议始终固定 tag 或校验 Release 中的 SHA-256，避免上游分支更新静默改变安装内容。
+也可以从 [GitHub Release](https://github.com/zhoupengyun572-cell/dsh-hana-research/releases/tag/v0.4.0-beta.1) 下载 `.tgz`。发布包 SHA-256：
 
-更新和卸载：
+```text
+437495d420fdff5268d8fb5431a06b8f7afcb7702ae4aa7133531f6bd9b2a8e7
+```
+
+更新与卸载：
 
 ```powershell
 dsh plugin --profile web update dsh-hana-research
 dsh plugin --profile web remove dsh-hana-research
 ```
 
-## 兼容性
+卸载插件不会自动删除研究数据。
 
-- **Node ≥ 22.13.0**（`node:sqlite` 免旗标下限）。实际运行时随 DeepSeek Harness 桌面端内置 Node 分发；已在 Windows 实机 + Node 24.15 验证，其他版本未逐一实测。
-- **DeepSeek Harness 开发者预览**（实机基线 `@deepseek-ai/dsh-tools 0.1.0-rc.13`）。`defineTool` 由宿主提供，插件以 optional peer 声明兼容范围 `>=0.1.0-rc.13 <0.2.0`；公开 CI 使用 npm 可获取的 `0.1.1-rc.2` 做前向兼容回归。
-- **生产依赖**仅 3 个：`docx`、`exceljs`、`pdfkit`（导出用）。`exceljs` 的传递依赖 `uuid@8.3.2` 存在一项中等审计告警，上游尚未发版修复；风险评估见 [SECURITY.md](SECURITY.md)。
+## 三分钟开始使用
 
-问题反馈与安全报告入口：[GitHub Issues](https://github.com/zhoupengyun572-cell/dsh-hana-research/issues)。
+1. 打开“项目库”，新建一个研究项目。
+2. 在项目中上传 PDF，或从“文献中心”检索并导入开放文献。
+3. 打开 PDF，选中文字创建批注或摘录；在右侧总结模板中整理研究问题、方法、结果与局限。
 
-## 前端构建（阅读工作区改版时）
+完整流程、快捷键和系统综述说明见[用户使用指南](docs/USER_GUIDE.md)。
+
+## 本地数据与安全边界
+
+- 数据默认存放在 `$DSH_HOME/plugin-data/hana-research/`，包括 SQLite `research.db`、PDF、翻译与项目笔记。
+- 当前数据库为 **schema v19**；升级前会在需要时保留迁移快照。
+- 新安装默认是空数据库，不自动携带作者项目或演示文献。
+- 写入型 Agent 工具需要用户确认，并由 Harness approval 与本地审计记录约束。
+- 联网检索、开放 PDF 下载、AI 解读与翻译的目标域名和限制见[安全政策](SECURITY.md)。
+- 生产依赖无已知高危/严重漏洞；剩余上游告警与平台验证边界在安全政策中如实披露。
+
+## 兼容性与已知限制
+
+- Node.js `>=22.13.0`；Harness 实机基线为 `@deepseek-ai/dsh-tools 0.1.0-rc.13`，CI 使用可公开安装的 `0.1.1-rc.2` 回归。
+- Windows 已完成安装、阅读、批注、导出、更新和卸载闭环；Ubuntu 当前只有自动化 CI，没有完整 GUI 人工验收。
+- UI 当前以简体中文为主。
+- Harness 仍处开发者预览期，因此暂不承诺跨所有预览版本的稳定兼容。
+
+## 文档
+
+- [用户使用指南](docs/USER_GUIDE.md)：快速上手、工作流、功能树、FAQ 与备份恢复
+- [插件技术总览](docs/PLUGIN_OVERVIEW.md)：架构、能力矩阵、数据模型、API 与 Agent 工具
+- [更新日志](CHANGELOG.md)
+- [安全政策](SECURITY.md)
+- [贡献指南](CONTRIBUTING.md)
+- [第三方许可证](THIRD_PARTY_LICENSES.md)
+
+## 开发与验证
 
 ```powershell
+npm ci
+node scripts/run-tests.mjs
+
 cd web
-npm install            # 首次：锁定版本依赖
-npm run build          # esbuild 打包 → assets/reader-workbench.js|css + vendor/embedpdf/
-npm run dev            # watch 模式
+npm ci
+node --test tests/*.test.mjs
+npm run build
 ```
 
-## 验证
+完整测试基线：根测试 167/167、阅读器编辑器测试 13/13。公开 CI 覆盖 Ubuntu/Windows × Node 22/24，并验证发布包白名单和体积上限。
 
-- 数据层测试：`node tests/store.test.mjs` 等全部 `tests/*.test.mjs`（node:test，临时目录自动清理）
-- 前端单元：`cd web; node tests/markdown.test.mjs`
-- 重启后：`GET /api/hana-research/health` 应返回 `{ok:true, releaseVersion:"0.4.0-beta.1", schemaVersion:19, ...}`
-- 数据目录：`$DSH_HOME/plugin-data/hana-research/research.db`（WAL，schema v19）
+## 反馈与贡献
 
-## 回滚
+- Bug：[提交问题](https://github.com/zhoupengyun572-cell/dsh-hana-research/issues/new?template=bug_report.yml)
+- 功能建议：[提交功能请求](https://github.com/zhoupengyun572-cell/dsh-hana-research/issues/new?template=feature_request.yml)
+- 安全问题：请遵循[安全政策](SECURITY.md)，不要在公开 Issue 中披露敏感细节。
 
-1. 执行 `dsh plugin --profile web remove dsh-hana-research`。
-2. 重启应用。卸载插件不会自动删除 `$DSH_HOME/plugin-data/hana-research/` 中的研究数据。
-3. 数据回滚：先停止 Harness，再使用对应迁移前快照 `research.db.bak-v*` 覆盖数据库；不要跨 schema 直接用旧代码写入新数据库。
+欢迎先阅读[贡献指南](CONTRIBUTING.md)。提交问题时请附 Harness/Node 版本、操作系统、复现步骤和必要的脱敏日志。
+
+## License
+
+[MIT](LICENSE) © 2026 Hana Research contributors

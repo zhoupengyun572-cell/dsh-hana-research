@@ -1,0 +1,54 @@
+name: Feature request
+description: 提议新的研究工作流、功能或体验改进
+title: "[Feature]: "
+labels:
+  - enhancement
+body:
+  - type: markdown
+    attributes:
+      value: |
+        好的建议应先说明研究场景和当前困难，再描述希望出现的功能。
+  - type: checkboxes
+    attributes:
+      label: 提交前检查
+      options:
+        - label: 我已搜索现有 Issues，未发现相同建议。
+          required: true
+        - label: 建议中没有真实论文正文、参与者信息或其他敏感研究数据。
+          required: true
+  - type: textarea
+    attributes:
+      label: 研究场景
+      description: 你在进行什么类型的研究？在哪一步遇到困难？
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: 当前做法与问题
+      description: 目前需要如何绕行？为什么不够好？
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: 建议方案
+      description: 描述理想行为；如有界面草图可附上脱敏图片。
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: 可接受的替代方案
+      description: 是否有更小、风险更低或更通用的实现方式？
+  - type: dropdown
+    attributes:
+      label: 主要涉及区域
+      options:
+        - 文献中心
+        - 项目库与任务
+        - PDF 阅读与批注
+        - 文献笔记
+        - 系统综述与证据质量
+        - Agent 协作
+        - 导入、导出与数据管理
+        - 其他
+    validations:
+      required: true
