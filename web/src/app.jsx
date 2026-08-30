@@ -22,8 +22,8 @@ import {
 // 其 base URL 为 blob:，无法解析相对路径（wasmUrl/字体 URL 均需绝对化）。
 const ABS = (path) => new URL(path, window.location.href).href;
 
-function handoffReaderToAgent({ projectId, attachmentId, paperTitle, projectTitle, pageNumber }) {
-  const prompt = `请继续协助我精读《${paperTitle || '当前文献'}》${projectTitle ? `（项目：${projectTitle}）` : ''}。projectId: ${projectId}；attachmentId: ${attachmentId}；当前阅读到第 ${pageNumber || 1} 页。请先调用 hana_research_get_reader_context 和 hana_research_get_project_brief 读取真实上下文，再结合已有逐句笔记与汇总笔记建议下一步。引用证据时保留页码；没有对应笔记时请明确说明，不要推测全文内容。`;
+/** 通用 Agent 交接：requestId + ack 监听 + 2.4s 超时（v48：笔记卡"交给 Agent"复用同一握手，替代裸 postMessage）。 */
+function handoffPromptToAgent({ prompt, label }) {
   const requestId = `reader-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
   return new Promise((resolve) => {
     let timer = null;
@@ -48,12 +48,17 @@ function handoffReaderToAgent({ projectId, attachmentId, paperTitle, projectTitl
         type: 'hana-research.agent-handoff',
         requestId,
         prompt,
-        label: '当前阅读上下文已交给 Agent',
+        label,
       }, window.location.origin);
     } catch {
       finish({ ok: false, error: '无法连接 Agent 输入框，请稍后重试' });
     }
   });
+}
+
+function handoffReaderToAgent({ projectId, attachmentId, paperTitle, projectTitle, pageNumber }) {
+  const prompt = `请继续协助我精读《${paperTitle || '当前文献'}》${projectTitle ? `（项目：${projectTitle}）` : ''}。projectId: ${projectId}；attachmentId: ${attachmentId}；当前阅读到第 ${pageNumber || 1} 页。请先调用 hana_research_get_reader_context 和 hana_research_get_project_brief 读取真实上下文，再结合已有逐句笔记与汇总笔记建议下一步。引用证据时保留页码；没有对应笔记时请明确说明，不要推测全文内容。`;
+  return handoffPromptToAgent({ prompt, label: '当前阅读上下文已交给 Agent' });
 }
 
 const FONT_URLS = {
@@ -455,6 +460,16 @@ export default function PdfWorkspace({ projectId, attachmentId, paperId, paperTi
       if (Number.isFinite(page) && page >= 1) {
         activePageRef.current = page;
         setActivePage(page);
+        // 翻页即入队进度（进度队列自带 600ms 防抖）；此前只有退出/布局变化才写库，崩溃即丢页码
+        progressQueue.current?.schedule({
+          pageNumber: page,
+          zoom: getCurrentZoom(),
+          leftPanelWidth: layoutRef.current.leftWidth,
+          rightPanelWidth: layoutRef.current.rightWidth,
+          leftPanelCollapsed: layoutRef.current.leftCollapsed,
+          rightPanelCollapsed: layoutRef.current.rightCollapsed,
+          rightTab: rightTabRef.current,
+        });
       }
     });
     return () => {
@@ -1606,10 +1621,12 @@ export default function PdfWorkspace({ projectId, attachmentId, paperId, paperTi
     });
   }, [projectId, paperId, setConfirmBox, showToast]);
 
-  const suggestRelationHandoff = useCallback((note) => {
+  const suggestRelationHandoff = useCallback(async (note) => {
     const prompt = `我在精读《${paperTitle || '当前文献'}》（projectId: ${projectId}; paperId: ${paperId || ''}），第 ${note.pageNumber || 1} 页有一条逐句笔记：摘录「${String(note.quotedText || '').slice(0, 120)}」。请基于项目证据推荐 1–2 个与其他文献的论证关系（支持 / 反驳 / 被引用），并给出理由。只给出候选解释，不要直接写入关系；经我确认后才建立。`;
-    window.top.postMessage({ type: 'hana-research.agent-handoff', prompt, label: '论证关系建议已交给 Agent' }, window.location.origin);
-  }, [paperTitle, projectId, paperId]);
+    const result = await handoffPromptToAgent({ prompt, label: '论证关系建议已交给 Agent' });
+    if (result.ok) showToast('论证关系建议已交给 Agent');
+    else showToast(result.error || '交接失败，请重试', true);
+  }, [paperTitle, projectId, paperId, showToast]);
 
   // Esc 优先关闭浮层；Alt+Left 执行返回逻辑；无浮层时 Esc 不丢弃笔记
   useEffect(() => {

@@ -550,6 +550,12 @@ button.wb-note-save.wb-note-error:hover { background: color-mix(in srgb, var(--w
 }
 .wb-boot-error { color: var(--wb-danger); font-weight: 600; }
 .wb-boot-back { color: var(--wb-accent); text-decoration: none; font-size: 12px; }
+.wb-boot-actions { display: flex; align-items: center; gap: 14px; }
+.wb-boot-retry {
+  padding: 6px 16px; border: 0; border-radius: 999px; cursor: pointer;
+  color: #fff; background: var(--wb-accent); font-size: 12px; font-weight: 600;
+}
+.wb-boot-retry:hover { filter: brightness(1.08); }
 
 /* ── 左侧栏 ─────────────────────────────── */
 .wb-left-inner { display: flex; flex-direction: column; height: 100%; min-height: 0; }
