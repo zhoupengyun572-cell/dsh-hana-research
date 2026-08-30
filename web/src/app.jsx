@@ -611,7 +611,9 @@ export default function PdfWorkspace({ projectId, attachmentId, paperId, paperTi
     items.forEach(item => importedAnnotationIdsRef.current.add(item.annotation.id));
   }, [registry, documentId, annotations, importAnnotations]);
 
-  // ── 引文跳转（笔记卡片 → PDF 定位） ──
+  // ── 引文跳转（笔记卡片 → PDF 定位）+ 移除闭环 ──
+  const citationsRef = useRef([]);
+  citationsRef.current = citations;
   useEffect(() => {
     citationJumpHolder.onJump = (target) => {
       if (!target) return;
@@ -624,7 +626,26 @@ export default function PdfWorkspace({ projectId, attachmentId, paperId, paperTi
       jumpToPage(target.pageNumber || 1);
       showToast('已定位到第 ' + (target.pageNumber || 1) + ' 页');
     };
-  }, [getCapability, jumpToPage]);
+    // 移除卡片 → 删除服务端引文记录 → 刷新底部引文条（旧实现只删文档节点，记录永久残留）
+    citationJumpHolder.onRemove = async (citationId, attrs) => {
+      let recordId = citationId || null;
+      if (!recordId && attrs?.annotationId) {
+        // 旧卡片无 citationId：按注解+页码回退匹配
+        const match = citationsRef.current.find(c => (
+          c.annotationId === attrs.annotationId && Number(c.pageNumber) === Number(attrs.pageNumber)
+        ));
+        recordId = match?.id || null;
+      }
+      if (!recordId) return;
+      try {
+        await repositories.deleteCitation(recordId);
+        setCitations(prev => prev.filter(c => c.id !== recordId));
+        showToast('引文记录已移除');
+      } catch (error) {
+        showToast('引文记录删除失败：' + String(error.message || error), true);
+      }
+    };
+  }, [getCapability, jumpToPage, showToast]);
 
   // v13：引文卡片分类/标签（从关联逐句笔记解析）
   const sentenceNotesRef = useRef([]);
@@ -1283,6 +1304,23 @@ export default function PdfWorkspace({ projectId, attachmentId, paperId, paperTi
         paperId, annotationId, pageNumber, quotedText: text,
         prefix: '', suffix: String(comment || '').slice(0, 2000),
       });
+      // 回填真实引文 ID 到卡片节点（供就地移除时删除服务端记录）
+      try {
+        const pending = [];
+        editor.state.doc.descendants((node, pos) => {
+          if (node.type.name === 'citationCard' && !node.attrs.citationId
+            && node.attrs.annotationId === annotationId
+            && node.attrs.quotedText === text
+            && Number(node.attrs.pageNumber) === Number(pageNumber)) {
+            pending.push(pos);
+          }
+        });
+        if (pending.length) {
+          const pos = pending[pending.length - 1]; // 最近插入的一张
+          const node = editor.state.doc.nodeAt(pos);
+          if (node) editor.view.dispatch(editor.state.tr.setNodeMarkup(pos, undefined, { ...node.attrs, citationId: res.citation.id }));
+        }
+      } catch { /* 回填失败不影响主流程 */ }
       setCitations(prev => prev.map(c => c.id === localId ? res.citation : c));
       return true;
     } catch (error) {
@@ -2022,15 +2060,37 @@ function OutlineNode({ item, activePage, onJump, level }) {
   );
 }
 
+const THUMB_CACHE_MAX_ENTRIES = 200;
+
+/** 缩略图 LRU 写入：ready 条目刷新使用顺序，超限驱逐最旧并回收其 blob URL。 */
+function setThumbnailCacheEntry(cache, page, entry) {
+  if (entry.status === 'ready') cache.delete(page);
+  cache.set(page, entry);
+  while (cache.size > THUMB_CACHE_MAX_ENTRIES) {
+    const oldestKey = cache.keys().next().value;
+    if (oldestKey === page) break; // 防御：不驱逐刚写入的条目
+    const oldest = cache.get(oldestKey);
+    if (oldest?.url) URL.revokeObjectURL(oldest.url);
+    cache.delete(oldestKey);
+  }
+}
+
 function ThumbnailItem({ page, active, rootRef, cache, getCapability, onJump }) {
   const hostRef = useRef(null);
   const [state, setState] = useState(() => cache.get(page) || { status: 'idle', url: '' });
 
   useEffect(() => {
     const node = hostRef.current;
-    if (!node || state.status !== 'idle') return undefined;
+    if (!node) return undefined;
     let cancelled = false;
+    let loading = false;
     const load = async () => {
+      if (loading || cancelled) return;
+      const cached = cache.get(page);
+      if (cached?.status === 'ready') { setState(cached); return; }
+      // 失败条目有限重试（≤2 次），避免坏页反复打渲染引擎
+      if (cached?.status === 'error' && (cached.attempts || 0) >= 2) return;
+      loading = true;
       setState({ status: 'loading', url: '' });
       try {
         const task = getCapability('thumbnail')?.renderThumb?.(page - 1, 0.42);
@@ -2039,21 +2099,21 @@ function ThumbnailItem({ page, active, rootRef, cache, getCapability, onJump }) 
         const url = URL.createObjectURL(blob);
         if (cancelled) { URL.revokeObjectURL(url); return; }
         const next = { status: 'ready', url };
-        cache.set(page, next);
+        setThumbnailCacheEntry(cache, page, next);
         setState(next);
       } catch {
         if (!cancelled) {
-          const next = { status: 'error', url: '' };
-          cache.set(page, next);
+          const next = { status: 'error', url: '', attempts: (cache.get(page)?.attempts || 0) + 1 };
+          setThumbnailCacheEntry(cache, page, next);
           setState(next);
         }
+      } finally {
+        loading = false;
       }
     };
+    // 持续观察（不在首次加载后断开）：被 LRU 驱逐的页面再次可见时可重载
     const observer = new IntersectionObserver((entries) => {
-      if (entries.some(entry => entry.isIntersecting)) {
-        observer.disconnect();
-        load();
-      }
+      if (entries.some(entry => entry.isIntersecting)) load();
     }, { root: rootRef.current, rootMargin: '320px 0px', threshold: 0.01 });
     observer.observe(node);
     return () => { cancelled = true; observer.disconnect(); };
@@ -2063,7 +2123,7 @@ function ThumbnailItem({ page, active, rootRef, cache, getCapability, onJump }) 
     <button ref={hostRef} type="button" className={'wb-thumb' + (active ? ' active' : '')}
       title={'第 ' + page + ' 页'} onClick={() => onJump(page)} aria-current={active ? 'page' : undefined}>
       {state.url
-        ? <img src={state.url} alt={'第 ' + page + ' 页'} />
+        ? <img src={state.url} alt={'第 ' + page + ' 页'} onError={() => setState({ status: 'idle', url: '' })} />
         : <span className="wb-thumb-placeholder">{state.status === 'error' ? '预览不可用' : '正在载入…'}</span>}
       <em>{page}</em>
     </button>

@@ -184,18 +184,46 @@ export const repositories = {
 /**
  * 通用防抖保存器：debounce 后串行 flush；失败保留数据并回调（可重试）。
  * 状态机：idle → pending → saving → saved | error
+ * v45：单一在途 promise 互斥（flushNow 与 flushImmediately 复用，防双写）；
+ *      保存期间到达的新编辑在同一轮内自动续存（旧实现在 saving 期间被触发的
+ *      flushNow 会直接 return，数据滞留到下一次用户操作）。
  */
 export function createSaveQueue({ debounceMs = 600, flush, onStatus }) {
   let timer = null;
   let dirty = false;
-  let saving = false;
   let pendingPayload = null;
   let status = 'idle';
   let lastError = null;
+  let inFlight = null;
 
   const setStatus = (next) => {
     status = next;
     onStatus?.(next, lastError);
+  };
+
+  const performFlush = async () => {
+    const payload = pendingPayload;
+    pendingPayload = null;
+    dirty = false;
+    setStatus('saving');
+    try {
+      await flush(payload);
+      lastError = null;
+      // 保存期间又有新编辑（schedule 置 dirty + 新 payload）：继续下一轮直到收敛
+      if (dirty && pendingPayload) return performFlush();
+      setStatus('saved');
+    } catch (error) {
+      dirty = true; // 保留待保存数据，等待重试
+      if (!pendingPayload) pendingPayload = payload; // 保存期间无新编辑时归还未送达内容
+      lastError = error;
+      setStatus('error');
+    }
+  };
+
+  const runExclusive = () => {
+    if (inFlight) return inFlight;
+    inFlight = performFlush().finally(() => { inFlight = null; });
+    return inFlight;
   };
 
   const schedule = (payload) => {
@@ -203,50 +231,21 @@ export function createSaveQueue({ debounceMs = 600, flush, onStatus }) {
     dirty = true;
     setStatus('pending');
     if (timer) clearTimeout(timer);
-    timer = setTimeout(() => { void flushNow(); }, debounceMs);
+    timer = setTimeout(() => { timer = null; void flushNow(); }, debounceMs);
   };
 
   const flushNow = async () => {
-    if (!dirty || saving) return;
     if (timer) { clearTimeout(timer); timer = null; }
-    dirty = false;
-    saving = true;
-    setStatus('saving');
-    try {
-      await flush(pendingPayload);
-      pendingPayload = null;
-      lastError = null;
-      setStatus('saved');
-    } catch (error) {
-      dirty = true; // 保留待保存数据，等待重试
-      lastError = error;
-      setStatus('error');
-    } finally {
-      saving = false;
-    }
+    if (!dirty) return;
+    await runExclusive();
   };
 
-  /** 立即冲刷（退出前调用，可等待）。 */
+  /** 立即冲刷（退出前调用，可等待）。在途保存先等待，期间的新编辑由其续轮一并落库。 */
   const flushImmediately = async () => {
     if (timer) { clearTimeout(timer); timer = null; }
-    if (!dirty && !saving) return true;
-    dirty = false;
-    saving = true;
-    setStatus('saving');
-    try {
-      await flush(pendingPayload);
-      pendingPayload = null;
-      lastError = null;
-      setStatus('saved');
-      return true;
-    } catch (error) {
-      dirty = true;
-      lastError = error;
-      setStatus('error');
-      return false;
-    } finally {
-      saving = false;
-    }
+    if (!dirty && !inFlight) return true;
+    await runExclusive();
+    return status !== 'error';
   };
 
   return {

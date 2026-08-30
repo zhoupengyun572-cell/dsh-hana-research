@@ -54,7 +54,15 @@ function CitationCardView({ node, deleteNode }) {
           <button type="button" className="wb-citation-jump" onClick={jump} disabled={stale}>
             <IconLocate size={12} /> 定位原文
           </button>
-          <button type="button" className="wb-citation-remove" onClick={() => deleteNode()}>
+          <button
+            type="button"
+            className="wb-citation-remove"
+            onClick={() => {
+              // 先通知移除服务端引文记录（v45 闭环），再删文档节点
+              citationJumpHolder.onRemove?.(attrs.citationId, attrs);
+              deleteNode();
+            }}
+          >
             移除卡片
           </button>
         </div>
