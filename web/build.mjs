@@ -16,18 +16,17 @@ async function copyVendorAssets() {
   fs.mkdirSync(path.join(VENDOR_OUT, 'fonts'), { recursive: true });
   const pdfiumWasm = path.join(HERE, 'node_modules', '@embedpdf', 'pdfium', 'dist', 'pdfium.wasm');
   fs.copyFileSync(pdfiumWasm, path.join(VENDOR_OUT, 'pdfium.wasm'));
+  // 只拷贝阅读器实际引用的字重（app.jsx FONT_URLS：Regular/Bold）；
+  // 全量拷贝会把发布包精简掉的约 24MB 未用字重重新带回 assets。
+  const usedFonts = ['NotoSansHans-Regular.otf', 'NotoSansHans-Bold.otf'];
   const fontsDir = path.join(HERE, 'node_modules', '@embedpdf', 'fonts-sc', 'fonts');
   if (fs.existsSync(fontsDir)) {
-    for (const file of fs.readdirSync(fontsDir)) {
-      if (file.endsWith('.otf')) {
-        fs.copyFileSync(path.join(fontsDir, file), path.join(VENDOR_OUT, 'fonts', file));
-      }
+    for (const file of usedFonts) {
+      const source = path.join(fontsDir, file);
+      if (fs.existsSync(source)) fs.copyFileSync(source, path.join(VENDOR_OUT, 'fonts', file));
+      else console.warn(`[build] fonts-sc 缺少 ${file}`);
     }
   } else {
-    // fonts-sc 不是 snippet 的直接依赖时，从嵌套依赖目录解析
-    const candidates = [
-      path.join(HERE, 'node_modules', '.pnpm'),
-    ];
     console.warn('[build] fonts-sc 未安装：中文 fallback 字体未拷贝（不影响英文 PDF；建议 npm i @embedpdf/fonts-sc@1.0.0）');
   }
   console.log('[build] vendor assets copied →', path.relative(ROOT, VENDOR_OUT));
