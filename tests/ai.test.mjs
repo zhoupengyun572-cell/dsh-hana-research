@@ -8,7 +8,7 @@ import path from "node:path";
 import { pathToFileURL, fileURLToPath } from "node:url";
 import { completeWithHostLlm, HostLlmError } from "../lib/host-llm.js";
 import { extractJsonFromAi, normalizeAiRecommendations, aiSummarizeSearch } from "../lib/ai-search.js";
-import { splitIntoChunks, cachedTranslation, storeTranslationCache, translateChunk, TranslationError } from "../lib/translation.js";
+import { splitIntoChunks, cachedTranslation, storeTranslationCache, translateChunk, TranslationError , flushTranslationCache } from "../lib/translation.js";
 import { extractPdfText } from "../lib/document-translation.js";
 
 /** mock llm.stream：按固定文本输出 */
@@ -124,6 +124,16 @@ test("translation cache roundtrip with TTL", (t) => {
 	const hit = cachedTranslation(dir, "hello world chunk");
 	assert.equal(hit.hit, true);
 	assert.equal(hit.translated, "你好世界");
+});
+
+test("segment cache persists to disk on flush and reloads in a fresh process state", (t) => {
+	const dir = fs.mkdtempSync(path.join(os.tmpdir(), "hana-tl-flush-"));
+	t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
+	const { key } = cachedTranslation(dir, "persist me");
+	storeTranslationCache(dir, key, "已持久化");
+	flushTranslationCache(dir);
+	const raw = JSON.parse(fs.readFileSync(path.join(dir, "translation-cache.json"), "utf-8"));
+	assert.equal(raw[key].translated, "已持久化");
 });
 
 test("translateChunk uses host llm", async () => {
