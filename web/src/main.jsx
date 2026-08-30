@@ -3,6 +3,7 @@ import React from 'react';
 import { createRoot } from 'react-dom/client';
 import PdfWorkspace from './app.jsx';
 import { readHostTokens, paletteFromTokens, applyPaletteCssVars } from './theme.js';
+import { readReaderTheme } from './workspace-utils.js';
 import './workbench.css';
 
 const API_BASE = '/api/hana-research';
@@ -30,8 +31,8 @@ async function boot() {
     }));
   } catch { /* sessionStorage 不可用时退回缺省导航 */ }
 
-  // 先应用宿主主题变量（避免首帧闪烁）
-  applyPaletteCssVars(paletteFromTokens(readHostTokens()));
+  // 先应用主题变量（尊重持久化的强制模式，避免深色用户首帧闪白）
+  applyPaletteCssVars(paletteFromTokens(readHostTokens(), readReaderTheme()));
 
   const root = createRoot(rootEl);
   const renderError = (message) => {

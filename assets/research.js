@@ -864,6 +864,15 @@ function ensureSelectedProject() {
   if (state.selectedProjectId) safeStorage.set('hana-research-target-project', state.selectedProjectId);
 }
 
+// ── 管理菜单外点关闭（document 级只绑定一次，引用随每次渲染更新） ──
+// 旧实现把监听绑定在 renderLiterature 内部，每次重渲染都会再叠一个捕获级监听且永不移除。
+let manageMenuRef = null;
+document.addEventListener('click', event => {
+  const active = manageMenuRef;
+  if (!active || active.pop.hidden) return;
+  if (!active.pop.contains(event.target) && !active.toggle.contains(event.target)) active.close(false);
+}, true);
+
 function renderLiterature(message = '') {
   const projectOptions = state.projects.map(project => `<option value="${escapeAttr(project.id)}" ${project.id === state.selectedProjectId ? 'selected' : ''}>${escapeHtml(project.title)}</option>`).join('');
   const topics = state.paperServerPaged ? (state.paperFacets.topics || []) : [...new Set(state.papers.map(paper => paper.topic).filter(Boolean))];
@@ -1070,9 +1079,8 @@ function renderLiterature(message = '') {
   menuPop.querySelectorAll('button').forEach(button => {
     button.addEventListener('click', () => closeMenu(true));
   });
-  document.addEventListener('click', event => {
-    if (!menuPop.hidden && !menuPop.contains(event.target) && !menuToggle.contains(event.target)) closeMenu(false);
-  }, true);
+  // 外点关闭由模块级单一监听统一处理（见 manageMenuRef 定义处）
+  manageMenuRef = { pop: menuPop, toggle: menuToggle, close: closeMenu };
   document.querySelector('#tag-manager')?.addEventListener('click', renderTagManagerModal);
   document.querySelector('#translate-settings')?.addEventListener('click', renderTranslateSettings);
   document.querySelector('#export-favorites-2')?.addEventListener('click', exportFavorites);
@@ -4801,6 +4809,11 @@ function pollTranslationDoc(docId, projectId, attachmentId) {
   refreshTranslationPanel(projectId, attachmentId, '正在开始翻译…');
   const timer = window.setInterval(async () => {
     try {
+      // 面板已随抽屉关闭/视图切走移出文档：停止轮询，避免后台持续打接口
+      if (!document.querySelector(`[data-translations-panel="${cssEscape(attachmentId || '')}"]`)) {
+        window.clearInterval(timer);
+        return;
+      }
       const data = await api(`/translate/document/${encodeURIComponent(docId)}`);
       const doc = data.doc;
       if (doc.status === 'done' || doc.status === 'failed') {

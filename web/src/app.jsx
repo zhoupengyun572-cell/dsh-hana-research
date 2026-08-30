@@ -129,8 +129,13 @@ function applyNoteFilters(notes, filters) {  const kw = (filters.q || '').trim()
 export default function PdfWorkspace({ projectId, attachmentId, paperId, paperTitle, projectTitle }) {
   // ── 主题 ──
   const [themeMode, setThemeMode] = useState(() => readReaderTheme()); // auto | light | dark
-  const [palette, setPalette] = useState(() => paletteFromTokens(readHostTokens()));
+  const [palette, setPalette] = useState(() => paletteFromTokens(readHostTokens(), themeMode));
   const viewerTheme = useMemo(() => buildViewerTheme(palette, themeMode), [palette, themeMode]);
+  // EmbedPDF 只在初始化时消费 config（无运行时换肤 API），主题变化需以 key 重挂载画布。
+  // 用颜色内容生成 key，避免宿主主题抖动导致的无谓重载。
+  const viewerThemeKey = useMemo(() => [
+    themeMode, palette.bgBase, palette.bgLayer1, palette.labelPrimary, palette.labelSecondary, palette.borderL1, palette.brand,
+  ].join('|'), [themeMode, palette]);
 
   // ── 布局 ──
   const [layout, setLayout] = useState({ leftWidth: 260, rightWidth: 380, leftCollapsed: false, rightCollapsed: false });
@@ -260,7 +265,11 @@ export default function PdfWorkspace({ projectId, attachmentId, paperId, paperTi
   }, [paperId, attachmentId]);
 
   const hasDirty = useCallback(() => {
-    return noteDirty || annDirty;
+    if (noteDirty || annDirty) return true;
+    for (const entry of sentenceSavesRef.current.values()) {
+      if (entry.timer || entry.promise || entry.failed || (entry.patch && Object.keys(entry.patch).length)) return true;
+    }
+    return false;
   }, [noteDirty, annDirty]);
   // 程序化返回导航放行标志：保存流程完成后置 true，beforeunload 不再拦截
   // （根因：beforeunload preventDefault 会静默取消 location.href 导航，导致返回键"无响应"）。
@@ -340,16 +349,27 @@ export default function PdfWorkspace({ projectId, attachmentId, paperId, paperTi
     };
   }, [paperId, attachmentId]);
 
-  // ── 主题实时跟随 ──
+  // ── 主题实时跟随（宿主属性变化 + 系统明暗偏好兜底） ──
   useEffect(() => {
-    const update = (tokens) => {
-      const next = paletteFromTokens(tokens);
+    const systemDark = window.matchMedia?.('(prefers-color-scheme: dark)');
+    const update = () => {
+      const tokens = readHostTokens();
+      // 无宿主 token 时 auto 跟随操作系统明暗，避免独立打开页面永远浅色
+      const resolvedMode = themeMode === 'auto' && !tokens?.bgBase
+        ? (systemDark?.matches ? 'dark' : 'light')
+        : themeMode;
+      const next = paletteFromTokens(tokens, resolvedMode);
       setPalette(next);
       applyPaletteCssVars(next);
     };
-    update(readHostTokens());
-    return watchHostTheme(update);
-  }, []);
+    update();
+    const stopWatch = watchHostTheme(update);
+    systemDark?.addEventListener?.('change', update);
+    return () => {
+      stopWatch();
+      systemDark?.removeEventListener?.('change', update);
+    };
+  }, [themeMode]);
 
   // 用户选择独立于宿主主题保存；受限 iframe/localStorage 不可用时静默退回 auto。
   useEffect(() => {
@@ -361,6 +381,8 @@ export default function PdfWorkspace({ projectId, attachmentId, paperId, paperTi
   // ── EmbedPDF 就绪：接管 registry / 阅读进度 / legacy 批注 ──
   const onViewerReady = useCallback((reg) => {
     setRegistry(reg);
+    // 主题切换会重挂载 viewer：新引擎为空，已保存批注需全部重新导入
+    importedAnnotationIdsRef.current = new Set();
     // 问题一修复：取消 EmbedPDF 原生选择菜单（schema.selectionMenus），只保留插件工具栏。
     // mergeSchema 顶层展开会整体替换 selectionMenus；菜单渲染器在选区出现时才读取 schema，
     // 因此此时清除即可确保原生菜单永不渲染（不依赖 CSS 隐藏，也不禁用批注能力）。
@@ -929,6 +951,7 @@ export default function PdfWorkspace({ projectId, attachmentId, paperId, paperTi
   }, [selectionMenu, ensureAnnotationCreated, syncAnnotationsFromEngine, paperId, attachmentId, dismissSelection, showToast]);
 
   // ── 逐句笔记保存（防抖 + 失败保留 + 可重试） ──
+  // entry 不变式：patch 只存"尚未送达"的增量；promise 非空当且仅当有在途请求。
   const scheduleSentenceSave = useCallback((noteId, patch) => {
     const map = sentenceSavesRef.current;
     const entry = map.get(noteId) || { timer: null, patch: {}, promise: null, failed: false };
@@ -937,16 +960,20 @@ export default function PdfWorkspace({ projectId, attachmentId, paperId, paperTi
     if (entry.timer) clearTimeout(entry.timer);
     entry.timer = setTimeout(() => {
       entry.timer = null;
-      const payload = entry.patch;
+      const payload = { ...entry.patch };
+      entry.patch = {}; // 已发送内容移出待保存区；发送期间的新编辑会再次并入 entry.patch
       setNoteSaveState('saving');
       entry.promise = repositories.updateSentenceNote(noteId, payload)
         .then((res) => {
           setSentenceNotes(prev => upsertSentenceNote(prev, res.note));
           setNoteSaveState('saved');
           entry.failed = false;
+          entry.promise = null;
         })
         .catch((error) => {
           entry.failed = true;
+          entry.promise = null;
+          entry.patch = { ...payload, ...entry.patch }; // 未送达内容放回（保留发送期间的新值）
           setNoteSaveError(String(error.message || error));
           setNoteSaveState('error');
         });
@@ -960,22 +987,32 @@ export default function PdfWorkspace({ projectId, attachmentId, paperId, paperTi
     const map = sentenceSavesRef.current;
     const jobs = [];
     for (const [noteId, entry] of map) {
-      if (entry.timer) { clearTimeout(entry.timer); entry.timer = null; }
-      if (entry.promise) { jobs.push(entry.promise); continue; }
-      if (entry.patch) {
-        const payload = entry.patch;
-        entry.promise = repositories.updateSentenceNote(noteId, payload)
-          .then((res) => {
-            setSentenceNotes(prev => upsertSentenceNote(prev, res.note));
-            entry.failed = false;
-          })
-          .catch((error) => { entry.failed = true; setNoteSaveError(String(error.message || error)); });
-        jobs.push(entry.promise);
-      }
+      jobs.push((async () => {
+        if (entry.timer) { clearTimeout(entry.timer); entry.timer = null; }
+        // 先等在途保存落地（其成功/失败回调已把增量留在 entry.patch）
+        if (entry.promise) {
+          try { await entry.promise; } catch { /* 失败内容已放回 entry.patch，下方统一补发 */ }
+          entry.promise = null;
+        }
+        if (!entry.patch || !Object.keys(entry.patch).length) return true;
+        const payload = { ...entry.patch };
+        entry.patch = {};
+        try {
+          const res = await repositories.updateSentenceNote(noteId, payload);
+          setSentenceNotes(prev => upsertSentenceNote(prev, res.note));
+          entry.failed = false;
+          return true;
+        } catch (error) {
+          entry.patch = { ...payload, ...entry.patch };
+          entry.failed = true;
+          setNoteSaveError(String(error.message || error));
+          return false;
+        }
+      })());
     }
     if (!jobs.length) return true;
     const results = await Promise.allSettled(jobs);
-    const ok = results.every(r => r.status === 'fulfilled');
+    const ok = results.every(r => r.status === 'fulfilled' && r.value !== false);
     setNoteSaveState(ok ? 'saved' : 'error');
     return ok;
   }, []);
@@ -1618,6 +1655,7 @@ export default function PdfWorkspace({ projectId, attachmentId, paperId, paperTi
           )}
           {pdf.status === 'ready' && (
             <PDFViewer
+              key={viewerThemeKey}
               ref={viewerRef}
               className="wb-viewer"
               config={{
@@ -2639,12 +2677,16 @@ function SentenceNoteCard({ note, categories, tagColors, allTags, focusRequested
   const [evidence, setEvidence] = useState(() => ({ ...(note.evidence || {}) }));
   const commentRef = useRef(note.comment);
   commentRef.current = comment;
+  // 本地编辑即真相源：连续填写多个字段时以上一次本地值为基准，避免防抖窗口内被未刷新的 props 覆盖
+  const evidenceRef = useRef(evidence);
+  evidenceRef.current = evidence;
   const inputRef = useRef(null);
   const moreRef = useRef(null);
 
   const setEvidenceField = (key, value) => {
-    const next = { ...(note.evidence || {}), [key]: value };
+    const next = { ...evidenceRef.current, [key]: value };
     if (!String(value).trim()) delete next[key];
+    evidenceRef.current = next;
     setEvidence(next);
     if (evidenceCapable) onUpdate(note.id, { evidence: next });
   };

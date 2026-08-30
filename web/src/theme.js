@@ -93,23 +93,30 @@ const DEFAULTS = {
   },
 };
 
-/** 宿主 tokens（可缺失）→ 规范化调色板；缺失时按明暗回退默认。 */
-export function paletteFromTokens(tokens) {
-  const dark = tokens?.bgBase ? luminance(tokens.bgBase) < 0.35 : false;
+/**
+ * 宿主 tokens（可缺失）→ 规范化调色板。
+ * mode：'auto' 跟随宿主明暗；'light'/'dark' 强制。强制模式与宿主明暗相左时
+ * 整体改用内置调色板，保证"强制深色"不会出现深色文字配浅色底的面板。
+ */
+export function paletteFromTokens(tokens, mode = 'auto') {
+  const hostDark = tokens?.bgBase ? luminance(tokens.bgBase) < 0.35 : false;
+  const forced = mode === 'light' || mode === 'dark' ? mode : null;
+  const dark = forced ? forced === 'dark' : hostDark;
+  const source = forced && (forced === 'dark') !== hostDark ? null : tokens;
   const d = dark ? DEFAULTS.dark : DEFAULTS.light;
   const pick = (value, fallback) => (value && parseColor(value) ? value : fallback);
   return {
     dark,
-    bgBase: pick(tokens?.bgBase, d.bgBase),
-    bgLayer1: pick(tokens?.bgLayer1, d.bgLayer1),
-    labelPrimary: pick(tokens?.labelPrimary, d.labelPrimary),
-    labelSecondary: pick(tokens?.labelSecondary, d.labelSecondary),
-    borderL1: pick(tokens?.borderL1, d.borderL1),
-    borderL2: pick(tokens?.borderL2, d.borderL2),
-    brand: pick(tokens?.brand, d.brand),
-    success: pick(tokens?.success, d.success),
-    warn: pick(tokens?.warn, d.warn),
-    error: pick(tokens?.error, d.error),
+    bgBase: pick(source?.bgBase, d.bgBase),
+    bgLayer1: pick(source?.bgLayer1, d.bgLayer1),
+    labelPrimary: pick(source?.labelPrimary, d.labelPrimary),
+    labelSecondary: pick(source?.labelSecondary, d.labelSecondary),
+    borderL1: pick(source?.borderL1, d.borderL1),
+    borderL2: pick(source?.borderL2, d.borderL2),
+    brand: pick(source?.brand, d.brand),
+    success: pick(source?.success, d.success),
+    warn: pick(source?.warn, d.warn),
+    error: pick(source?.error, d.error),
   };
 }
 

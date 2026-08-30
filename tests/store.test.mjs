@@ -279,3 +279,39 @@ test("duplicate merge blocks conflicting DOI and dual summary documents", (t) =>
 	assert.throws(() => store.mergeDuplicatePapers(c.id, d.id), error => error.code === "PAPER_MERGE_NOTE_CONFLICT");
 	store.close();
 });
+
+test("deleteProject keeps paper-level evidence for papers shared with other projects", (t) => {
+	const dir = makeTempDir(t);
+	const store = new ResearchStore(dir, { seedDemoData: true });
+	const base = {
+		source: "x", authors: "A", year: 2024, abstract: "", topic: "",
+		pdfUrl: null, sourceUrl: "", sourceName: "测试",
+	};
+	const shared = store.upsertSearchResult({ ...base, id: "shared-paper", sourceId: "a", title: "Shared paper" });
+	const onlyA = store.upsertSearchResult({ ...base, id: "only-a-paper", sourceId: "b", title: "Only A paper" });
+	const projectA = store.createProject({ title: "项目 A" });
+	const projectB = store.createProject({ title: "项目 B" });
+	store.addPaperToProject(projectA.id, shared.id);
+	store.addPaperToProject(projectB.id, shared.id);
+	store.addPaperToProject(projectA.id, onlyA.id);
+
+	store.createSentenceNote({ paperId: shared.id, quotedText: "共享论文证据", pageNumber: 2 });
+	store.createSentenceNote({ paperId: onlyA.id, quotedText: "A 独占证据", pageNumber: 3 });
+	store.putPaperNoteDocument({ paperId: shared.id, title: "共享汇总", markdown: "# 共享", tiptapJson: {} });
+	store.putPaperNoteDocument({ paperId: onlyA.id, title: "A 汇总", markdown: "# A", tiptapJson: {} });
+	store.putReadingState({ paperId: shared.id, currentPage: 5 });
+	store.putReadingState({ paperId: onlyA.id, currentPage: 7 });
+
+	store.deleteProject(projectA.id);
+
+	assert.ok(store.listSentenceNotes({ paperId: shared.id }).length === 1, "shared paper sentence notes survive");
+	assert.ok(store.getPaperNoteDocument(shared.id), "shared paper note document survives");
+	assert.ok(store.getReadingState(shared.id), "shared paper reading state survives");
+	assert.ok(store.listSentenceNotes({ paperId: onlyA.id }).length === 0, "orphaned paper sentence notes cascade");
+	assert.equal(store.getPaperNoteDocument(onlyA.id), null, "orphaned paper note document cascades");
+	assert.equal(store.getReadingState(onlyA.id), null, "orphaned paper reading state cascades");
+
+	store.deleteProject(projectB.id);
+	assert.ok(store.listSentenceNotes({ paperId: shared.id }).length === 0, "after last project removal, shared paper evidence cascades");
+	store.close();
+});
