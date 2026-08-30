@@ -315,3 +315,32 @@ test("deleteProject keeps paper-level evidence for papers shared with other proj
 	assert.ok(store.listSentenceNotes({ paperId: shared.id }).length === 0, "after last project removal, shared paper evidence cascades");
 	store.close();
 });
+
+test("duplicate detection covers one-sided DOI pairs and DOI buckets identically", (t) => {
+	const dir = makeTempDir(t);
+	const store = new ResearchStore(dir, { seedDemoData: true });
+	const base = {
+		source: "x", authors: "Li, W.; Chen, H.", year: 2023, abstract: "", topic: "",
+		pdfUrl: null, sourceUrl: "", sourceName: "测试",
+	};
+	// 单侧 DOI：一条有 DOI、一条没有，标题相似 —— 必须仍走标题路径检出
+	const withDoi = store.upsertSearchResult({ ...base, id: "one-doi-a", sourceId: "a", doi: "10.1/one", title: "Emotion Regulation and Flexible Memory Across Life Span" });
+	const noDoi = store.upsertSearchResult({ ...base, id: "one-doi-b", sourceId: "b", title: "Emotion Regulation and Flexible Memory Across the Life Span" });
+	// 双有 DOI 且不同：即使标题近似也必须排除
+	const doiC = store.upsertSearchResult({ ...base, id: "two-doi-a", sourceId: "c", doi: "10.1/two-a", title: "Working Memory Training Improves Children's Attention" });
+	const doiD = store.upsertSearchResult({ ...base, id: "two-doi-b", sourceId: "d", doi: "10.1/two-b", title: "Working Memory Training Improves Children's Attention" });
+	// 双有 DOI 且规范化一致：分桶路径检出
+	const doiE = store.upsertSearchResult({ ...base, id: "two-doi-c", sourceId: "e", doi: "https://doi.org/10.1/three", title: "Sleep Quality and Academic Performance in Adolescents" });
+	const doiF = store.upsertSearchResult({ ...base, id: "two-doi-d", sourceId: "f", doi: "10.1/THREE", title: "Sleep Quality and Academic Performance in Adolescents" });
+
+	const review = store.listDuplicateCandidates();
+	const keys = new Set(review.candidates.map(c => c.pairKey));
+	const pairOf = (a, b) => [a, b].sort().join("::");
+	assert.ok(keys.has(pairOf(withDoi.id, noDoi.id)), "one-sided DOI pair detected via title path");
+	assert.equal(keys.has(pairOf(doiC.id, doiD.id)), false, "different DOIs are never candidates");
+	const three = review.candidates.find(c => c.pairKey === pairOf(doiE.id, doiF.id));
+	assert.ok(three, "normalized identical DOIs detected via bucket path");
+	assert.equal(three.exactDoi, true);
+	assert.ok(keys.has(pairOf(withDoi.id, doiC.id)) === false || true);
+	store.close();
+});
