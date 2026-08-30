@@ -41,6 +41,22 @@
     return match[1].split(',').map(function (s) { return s.trim(); }).slice(0, 3).join(', ');
   }
 
+  /** 相对亮度（0-1）；解析失败返回 null。用于推断宿主明暗并同步 color-scheme。 */
+  function cssLuminance(cssColor) {
+    var r, g, b;
+    var hex = /^#([0-9a-f]{6})$/i.exec(cssColor);
+    if (hex) {
+      var n = parseInt(hex[1], 16);
+      r = (n >> 16) & 255; g = (n >> 8) & 255; b = n & 255;
+    } else {
+      var rgb = toRgb(cssColor);
+      if (!rgb) return null;
+      var parts = rgb.split(', ');
+      r = +parts[0]; g = +parts[1]; b = +parts[2];
+    }
+    return (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
+  }
+
   /** 沿同源 parent 链找最近一个有主题来源的文档；返回 { doc, mode }（mode: token|local）。 */
   function findThemeSource() {
     var win = window;
@@ -97,6 +113,13 @@
           var rgb = toRgb(value);
           if (rgb) root.style.setProperty(key + '-rgb', rgb);
         }
+      }
+      // 同步 color-scheme：light-dark() 等双值 CSS 需跟随宿主主题而非 OS 偏好；
+      // 无宿主 tokens（独立打开）时保持声明的 light dark，跟随系统。
+      var bg = root.style.getPropertyValue('--bg').trim();
+      if (bg) {
+        var lum = cssLuminance(bg);
+        if (lum !== null) root.style.colorScheme = lum < 0.35 ? 'dark' : 'light';
       }
     } catch (e) { /* 独立打开或跨源时使用 CSS fallback */ }
   }
