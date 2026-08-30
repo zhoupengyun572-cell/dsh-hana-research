@@ -2511,7 +2511,9 @@ button[aria-busy="true"], .button[aria-busy="true"] { cursor: wait; }
 @media (max-width: 680px) {
   .native-literature-view .paper-card { grid-template-columns: minmax(0, 1fr); padding-block: 10px; }
   .native-literature-view .paper-index { display: none; }
-  .native-literature-view .paper-actions { grid-column: 1; }
+  /* v46 真机验收：单列下作者行与按钮行仍被压成一行互相碰撞，改为纵向堆叠 */
+  .native-literature-view .paper-actions { grid-column: 1; grid-template-columns: minmax(0, 1fr); row-gap: 6px; }
+  .native-literature-view .paper-authors { max-width: 100%; }
   .native-literature-view .compact-select { flex-basis: 100%; }
 }
 @media (prefers-reduced-motion: reduce) {

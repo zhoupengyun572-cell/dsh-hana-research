@@ -220,8 +220,13 @@ async function navigateWorkspace(route, { push = true } = {}) {
     restoreRouteScroll(route, savedScroll);
   };
   try {
-    if (document.startViewTransition && !prefersReducedMotion()) document.startViewTransition(runSwap);
-    else runSwap();
+    if (document.startViewTransition && !prefersReducedMotion()) {
+      // 连续切换/文档隐藏时转场会被跳过：ready/finished 的拒绝必须接住，
+      // 否则走全局 unhandledrejection 弹出"Transition was skipped"错误通知（v46 真机验收发现）
+      const transition = document.startViewTransition(runSwap);
+      transition.ready?.catch?.(() => {});
+      transition.finished?.catch?.(() => {});
+    } else runSwap();
   } catch { runSwap(); }
   if (push) history.pushState({ hanaWorkspace: route }, '', HANA_ROUTE_PATHS[route]);
 }
