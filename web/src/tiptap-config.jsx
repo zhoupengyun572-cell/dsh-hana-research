@@ -1,6 +1,6 @@
 // Tiptap 编辑器配置：StarterKit（含下划线/链接）+ 表格/任务列表/占位符 + 引文卡片节点。
 // Markdown 导入导出走 @tiptap/markdown。
-import React, { useMemo, useRef, useEffect } from 'react';
+import React, { useMemo, useRef, useEffect, memo } from 'react';
 import { useEditor, EditorContent, NodeViewWrapper, ReactNodeViewRenderer } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import { Table, TableRow, TableCell, TableHeader } from '@tiptap/extension-table';
@@ -149,7 +149,7 @@ export function createMarkdownConverter(editor) {
 /** 汇总笔记默认模板（十节结构化骨架；首次新建注入，已有内容绝不覆盖）。见 summary-template.js。 */
 
 /** 笔记编辑器 React 组件。 */
-export function NoteEditor({ initialJson, placeholder, onChange, editorRef }) {
+export const NoteEditor = memo(function NoteEditor({ initialJson, placeholder, onChange, editorRef }) {
   const extensions = useMemo(() => buildExtensions(), []);
   // 文档从未创建（initialJson 无效）→ 使用默认模板；已有文档（含空文档）绝不覆盖。
   const hasDoc = Boolean(initialJson && initialJson.type);
@@ -197,4 +197,4 @@ export function NoteEditor({ initialJson, placeholder, onChange, editorRef }) {
       <EditorContent editor={editor} />
     </div>
   );
-}
+});

@@ -1,5 +1,5 @@
 // PdfWorkspace：三栏文献阅读工作区（左侧导航 / 中央 EmbedPDF / 右侧 Tiptap 笔记）。
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState, memo } from 'react';
 import { createPortal } from 'react-dom';
 import { PDFViewer } from '@embedpdf/react-pdf-viewer';
 import { FontCharset } from '@embedpdf/models';
@@ -156,6 +156,7 @@ export default function PdfWorkspace({ projectId, attachmentId, paperId, paperTi
   // ── EmbedPDF ──
   const viewerRef = useRef(null);
   const [registry, setRegistry] = useState(null);
+  const pageTrackerCleanupRef = useRef(null);
   const [documentId, setDocumentId] = useState(null);
   const [pageCount, setPageCount] = useState(0);
   const [activePage, setActivePage] = useState(1);
@@ -419,7 +420,7 @@ export default function PdfWorkspace({ projectId, attachmentId, paperId, paperTi
         });
         setPageSizes(sizes);
       }
-      // 订阅滚动页面变化 → 阅读进度
+      // 订阅文档结构变化（页数/尺寸）；滚动翻页的页面跟踪走 scroll 插件事件（见下方 effect）
       try {
         store.subscribe((action, newState) => {
           const resolvedDocument = newState?.core?.documents?.[firstDoc];
@@ -435,17 +436,32 @@ export default function PdfWorkspace({ projectId, attachmentId, paperId, paperTi
               return next;
             });
           }
-          const page = newState?.core?.currentPage ?? newState?.plugins?.scroll?.currentPage;
-          if (typeof page === 'number' && page > 0) {
-            activePageRef.current = page;
-            setActivePage(page);
-          }
         });
       } catch { /* 订阅失败不影响 */ }
     } catch (error) {
       console.warn('registry init partial:', error);
     }
   }, []);
+
+  // 滚动翻页跟踪：EmbedPDF 的 store 在纯滚动时不派发 action（存量缺陷：进度/高亮不随滚动更新）。
+  // 改用 scroll 插件的 onPageChange 事件（payload: { documentId, pageNumber(1起), totalPages }）。
+  // 必须等文档就绪（documentId）后再订阅：文档加载前挂的事件会被静默丢弃（真机实测）。
+  // 直接用 registry 取能力（getCapability 在本 effect 之后才声明，deps 引用会撞 TDZ）。
+  useEffect(() => {
+    if (!registry || !documentId) return undefined;
+    const scrollCap = registry?.getPlugin?.('scroll')?.provides?.() ?? null;
+    const offPageChange = scrollCap?.onPageChange?.((event) => {
+      const page = Number(event?.pageNumber);
+      if (Number.isFinite(page) && page >= 1) {
+        activePageRef.current = page;
+        setActivePage(page);
+      }
+    });
+    return () => {
+      pageTrackerCleanupRef.current = null;
+      if (typeof offPageChange === 'function') { try { offPageChange(); } catch { /* ignore */ } }
+    };
+  }, [registry, documentId]);
 
   // 恢复阅读进度 + 迁移 legacy 批注（页面尺寸就绪后）
   useEffect(() => {
@@ -853,6 +869,23 @@ export default function PdfWorkspace({ projectId, attachmentId, paperId, paperTi
       tags: meta.tags,
     });
   }, []);
+
+  // 稳定引用回调：RightPanel/SummaryTab 已 memo 化，内联箭头会让 memo 永远失效（v47 翻页重渲染治理）
+  const handleRightTabChange = useCallback((tab) => {
+    setRightTab(tab);
+    // 记住 Tab：写阅读状态（布局保存队列）
+    progressQueue.current?.schedule({
+      pageNumber: activePageRef.current,
+      zoom: getCurrentZoom(),
+      leftPanelWidth: layoutRef.current.leftWidth,
+      rightPanelWidth: layoutRef.current.rightWidth,
+      leftPanelCollapsed: layoutRef.current.leftCollapsed,
+      rightPanelCollapsed: layoutRef.current.rightCollapsed,
+      rightTab: tab,
+    });
+  }, [getCurrentZoom]);
+  const handleFocusDone = useCallback(() => setPendingFocusNoteId(null), []);
+  const handleOpenMetaManager = useCallback(() => setMetaManagerOpen(true), []);
 
   const applyMarkup = useCallback(async (type, color) => {
     const annotationCap = getCapability('annotation');
@@ -1754,19 +1787,7 @@ export default function PdfWorkspace({ projectId, attachmentId, paperId, paperTi
           <aside className="wb-right" style={{ width: layout.rightWidth }}>
             <RightPanel
               rightTab={rightTab}
-              onTabChange={(tab) => {
-                setRightTab(tab);
-                // 记住 Tab：写阅读状态（布局保存队列）
-                progressQueue.current?.schedule({
-                  pageNumber: activePageRef.current,
-                  zoom: getCurrentZoom(),
-                  leftPanelWidth: layoutRef.current.leftWidth,
-                  rightPanelWidth: layoutRef.current.rightWidth,
-                  leftPanelCollapsed: layoutRef.current.leftCollapsed,
-                  rightPanelCollapsed: layoutRef.current.rightCollapsed,
-                  rightTab: tab,
-                });
-              }}
+              onTabChange={handleRightTabChange}
               noteDoc={noteDoc}
               citations={citations}
               editorRef={noteEditorRef}
@@ -1783,14 +1804,14 @@ export default function PdfWorkspace({ projectId, attachmentId, paperId, paperTi
               noteSaveError={noteSaveError}
               onRetryNoteSave={retryNoteSaves}
               pendingFocusNoteId={pendingFocusNoteId}
-              onFocusDone={() => setPendingFocusNoteId(null)}
+              onFocusDone={handleFocusDone}
               onUpdateNote={scheduleSentenceSave}
               onDeleteNote={deleteSentenceNote}
               onJumpNote={jumpToSentenceSource}
               onRelocateNote={relocateSentenceNote}
               onRetryDraft={retryDraftNote}
               onCreateCategory={createCategory}
-              onOpenMetaManager={() => setMetaManagerOpen(true)}
+              onOpenMetaManager={handleOpenMetaManager}
               onAddToSummary={addSentenceNoteToSummary}
               onConfirm={setConfirmBox}
               onEvidenceMatrix={openEvidenceMatrixFromNote}
@@ -2075,7 +2096,7 @@ function setThumbnailCacheEntry(cache, page, entry) {
   }
 }
 
-function ThumbnailItem({ page, active, rootRef, cache, getCapability, onJump }) {
+const ThumbnailItem = memo(function ThumbnailItem({ page, active, rootRef, cache, getCapability, onJump }) {
   const hostRef = useRef(null);
   const [state, setState] = useState(() => cache.get(page) || { status: 'idle', url: '' });
 
@@ -2128,7 +2149,7 @@ function ThumbnailItem({ page, active, rootRef, cache, getCapability, onJump }) 
       <em>{page}</em>
     </button>
   );
-}
+});
 
 function SearchTab({ getCapability, documentId, onJump }) {
   const [keyword, setKeyword] = useState('');
@@ -2208,7 +2229,7 @@ function SearchTab({ getCapability, documentId, onJump }) {
 }
 
 
-function AnnotationItem({ item, onJump, onDelete, onEditComment }) {
+const AnnotationItem = memo(function AnnotationItem({ item, onJump, onDelete, onEditComment }) {
   const stale = item.stale;
   const color = item.color || '#FFD54F';
   const kind = markupKind(item.subtype || 'highlight');
@@ -2232,7 +2253,7 @@ function AnnotationItem({ item, onJump, onDelete, onEditComment }) {
       )}
     </article>
   );
-}
+});
 
 /** 唯一文本选择工具栏（Portal 渲染到 body，fixed 视口坐标，防 PDF 容器裁切）。 */
 function SelectionToolbar({ placement, onMarkup, onSentenceNote, onQuote, onCopy, onExplain }) {
@@ -2519,7 +2540,7 @@ function MetaManagerModal({ categories, tagStats, tagColors, categoryCounts, onC
 }
 
 /** 右侧笔记面板：逐句笔记 / 汇总笔记 双视图。 */
-function RightPanel(props) {
+const RightPanel = memo(function RightPanel(props) {
   const {
     rightTab, onTabChange, noteDoc, citations, editorRef, onChange, onSummaryMeta,
     onJumpCitation, sentenceNotes, categories, tagColors, allTags, filters, onFiltersChange,
@@ -2606,7 +2627,7 @@ function RightPanel(props) {
       )}
     </div>
   );
-}
+});
 
 function NoteSaveBadge({ state, error, onRetry }) {
   if (state === 'saving') return <span className="wb-note-save wb-note-saving">正在保存…</span>;
@@ -2728,7 +2749,7 @@ function SentenceNotesTab({ notes, categories, tagColors, allTags, filters, setF
 }
 
 /** 逐句笔记卡片（P6：结构化证据 + 证据矩阵/建任务/论证关系入口）。 */
-function SentenceNoteCard({ note, categories, tagColors, allTags, focusRequested, onFocusDone, onUpdate, onDelete, onJump, onRelocate, onRetryDraft, onAddToSummary, onEvidenceMatrix, onCreateTask, onSuggestRelation, evidenceCapable }) {
+const SentenceNoteCard = memo(function SentenceNoteCard({ note, categories, tagColors, allTags, focusRequested, onFocusDone, onUpdate, onDelete, onJump, onRelocate, onRetryDraft, onAddToSummary, onEvidenceMatrix, onCreateTask, onSuggestRelation, evidenceCapable }) {
   const [comment, setComment] = useState(note.comment);
   const [tagInput, setTagInput] = useState('');
   const [showMore, setShowMore] = useState(false);
@@ -2941,10 +2962,10 @@ function SentenceNoteCard({ note, categories, tagColors, allTags, focusRequested
       )}
     </article>
   );
-}
+});
 
 /** 汇总笔记视图：Tiptap 编辑器 + 分类/标签 + 引文条。 */
-function SummaryTab({ noteDoc, citations, editorRef, onChange, onSummaryMeta, onJumpCitation, categories, tagColors, allTags }) {
+const SummaryTab = memo(function SummaryTab({ noteDoc, citations, editorRef, onChange, onSummaryMeta, onJumpCitation, categories, tagColors, allTags }) {
   const category = noteDoc?.categoryId ? categories.find(c => c.id === noteDoc.categoryId) : null;
   const [tagInput, setTagInput] = useState('');
   const tags = noteDoc?.tags || [];
@@ -3002,7 +3023,7 @@ function SummaryTab({ noteDoc, citations, editorRef, onChange, onSummaryMeta, on
       )}
     </div>
   );
-}
+});
 
 /** AI 解释弹层。 */
 function ExplainPopover({ box, onClose, onRetry }) {
