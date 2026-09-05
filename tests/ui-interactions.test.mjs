@@ -513,3 +513,99 @@ test('project evidence coding applies templates as drafts and saves typed paper 
   assert.equal(fields.length, 2, 'template stays a draft until save');
   modal.querySelector('[data-modal-cancel]').click();
 });
+
+test('AI pre-screen panel runs, renders tiered suggestions, and adopts into manual screening', async () => {
+  const project = { id: 'p1', title: '情绪调节', status: 'active', projectType: '', updatedAt: '2026-08-21' };
+  const papers = [
+    { id: 'w1', title: '正念干预对焦虑的效果', venue: '心理学报', year: '2023', attachmentId: null, readStatus: 'unread' },
+    { id: 'w2', title: '一篇社论', venue: '评论', year: '2022', attachmentId: null, readStatus: 'unread' },
+  ];
+  const screeningOverview = {
+    projectId: 'p1',
+    criteria: [{ id: 'c1', kind: 'include', label: '实证研究', description: '', position: 0, enabled: true }],
+    titleAbstract: { pending: 2, include: 0, maybe: 0, exclude: 0 },
+    fullText: { pending: 2, include: 0, maybe: 0, exclude: 0 },
+    total: 2,
+    finalIncluded: 0,
+    papers: [],
+    dualScreening: { config: { enabled: false, reviewerAName: '审查者 A', reviewerBName: '审查者 B' }, byPaper: {}, conflicts: [], conflictCount: 0, stages: { titleAbstract: { total: 2, paired: 0, agreementCount: 0, agreementRate: null, kappa: null, counts: { unreviewed: 2, in_progress: 0, agreement: 0, conflict: 0, resolved: 0 } }, fullText: { total: 2, paired: 0, agreementCount: 0, agreementRate: null, kappa: null, counts: { unreviewed: 2, in_progress: 0, agreement: 0, conflict: 0, resolved: 0 } } } },
+    prisma: { batches: [], warnings: [] },
+  };
+  const aiRun = { id: 'r1', projectId: 'p1', stage: 'title_abstract', criteriaHash: 'abcdef0123456789', criteriaSnapshot: [], targetPaperIds: [], model: 'deepseek-chat', promptVersion: 'ais-v1', status: 'running', total: 2, processed: 2, included: 1, excluded: 0, uncertain: 1, lastPaperId: 'w2', error: '', createdAt: '2026-09-05T00:00:00Z', updatedAt: '2026-09-05T00:00:00Z' };
+  const aiResults = [
+    { id: 'ar1', runId: 'r1', projectId: 'p1', paperId: 'w1', title: papers[0].title, stage: 'title_abstract', decision: 'include', confidence: 0.9, rationale: '两项纳入标准均满足', perCriteria: [], tier: 1, sentScope: 'metadata', createdAt: '2026-09-05T00:00:01Z' },
+    { id: 'ar2', runId: 'r1', projectId: 'p1', paperId: 'w2', title: papers[1].title, stage: 'title_abstract', decision: 'uncertain', confidence: 0.4, rationale: '摘要信息不足', perCriteria: [], tier: 3, sentScope: 'metadata', createdAt: '2026-09-05T00:00:02Z' },
+  ];
+  let runs = [];
+  let adopted = null;
+  const agreement = { available: true, stage: 'title_abstract', runId: 'r1', runStatus: 'done', criteriaHash: 'abcdef0123456789', criteriaChanged: false, sampleSize: 2, aiDecisions: { include: 1, exclude: 0, uncertain: 1 }, counts: { tp: 1, fp: 0, tn: 1, fn: 0 }, sensitivity: 100, specificity: 100, agreementRate: 100, overrides: 0 };
+  const responder = async (input, init = {}) => {
+    const path = new URL(String(input), 'http://localhost').pathname;
+    const method = String(init.method || 'GET').toUpperCase();
+    if (path.endsWith('/projects')) return json({ projects: [{ ...project, paperCount: 2, noteCount: 0 }] });
+    if (path.endsWith('/projects/p1/papers')) return json({ project, papers });
+    if (path.endsWith('/projects/p1/translations')) return json({ docs: [] });
+    if (path.endsWith('/projects/p1/relations')) return json({ relations: [] });
+    if (path.endsWith('/projects/p1/notes')) return json({ notes: [] });
+    if (path.endsWith('/projects/p1/cockpit-stats')) return json({ papers: { total: 2, read: 0, reading: 0, withPdf: 0 }, evidence: { notes: 0 }, tasks: { total: 0, todo: 0 }, relations: { total: 0 } });
+    if (path.endsWith('/projects/p1/screening/ai-runs') && method === 'POST') {
+      runs = [{ ...aiRun, status: 'done' }];
+      return json({ run: { ...aiRun, status: 'queued' } }, 201);
+    }
+    if (path.endsWith('/projects/p1/screening/ai-runs')) return json({ runs: runs.map(run => ({ ...run })) });
+    if (path.endsWith('/projects/p1/screening/ai')) return json({ results: aiResults.map(item => ({ ...item })) });
+    if (path.endsWith('/projects/p1/screening/ai-agreement')) return json(agreement);
+    if (/\/projects\/p1\/papers\/w1\/screening$/.test(path) && method === 'PATCH') {
+      adopted = JSON.parse(init.body);
+      return json({ paper: { id: 'w1', titleAbstractDecision: adopted.decision } });
+    }
+    if (path.endsWith('/projects/p1/screening')) return json(screeningOverview);
+    return json({});
+  };
+  const window = installWindow('projects', responder);
+  await import(`../assets/research.js?ai-screening-${Date.now()}`);
+  await wait(40);
+  window.document.querySelector('[data-project-id="p1"]').click();
+  await wait(60);
+  const panel = window.document.querySelector('#drawer-panel');
+  const methodDetails = panel.querySelector('[data-evidence-method="screening"]');
+  methodDetails.open = true;
+  const aiPanel = panel.querySelector('[data-ai-panel]');
+  assert.ok(aiPanel, 'AI pre-screen disclosure exists inside the screening workbench');
+  assert.equal(aiPanel.open, false, 'AI panel starts collapsed');
+  aiPanel.open = true;
+  aiPanel.dispatchEvent(new window.Event('toggle'));
+  await wait(60);
+  const runButton = aiPanel.querySelector('[data-ai-run]');
+  assert.ok(runButton, 'run button renders when idle');
+  assert.match(aiPanel.querySelector('[data-ai-panel-badge]').textContent, /未运行/);
+  runButton.click();
+  await wait(40);
+  const confirmButton = window.document.querySelector('[data-dialog-confirm]');
+  assert.ok(confirmButton, 'run requires a quota confirmation dialog');
+  confirmButton.click();
+  await wait(120);
+  assert.equal(runs.length, 1, 'POST ai-runs happened after confirmation');
+  assert.match(aiPanel.querySelector('[data-ai-runs]').textContent, /已完成 2\/2/);
+  const groups = aiPanel.querySelectorAll('.ai-tier-group');
+  assert.equal(groups.length, 2, 'tier 1 and tier 3 groups render');
+  assert.match(aiPanel.querySelector('[data-ai-results]').textContent, /高置信建议 · 1/);
+  assert.match(aiPanel.querySelector('[data-ai-results]').textContent, /建议转人工 · 1/);
+  assert.match(aiPanel.querySelector('[data-ai-agreement]').textContent, /一致率/);
+  const adoptButton = aiPanel.querySelector('[data-ai-adopt="w1"]');
+  assert.ok(adoptButton, 'include suggestion offers adopt action');
+  assert.equal(aiPanel.querySelector('[data-ai-adopt="w2"]'), null, 'uncertain suggestions never offer adopt');
+  adoptButton.click();
+  await wait(80);
+  assert.ok(adopted, 'adopt PATCHed the manual screening field');
+  assert.equal(adopted.decision, 'include');
+  assert.equal(adopted.stage, 'title_abstract');
+  assert.match(adopted.reason, /AI 建议/);
+
+  panel.querySelector('[data-prisma-open]').click();
+  await wait(120);
+  const prismaAi = window.document.querySelector('[data-prisma-ai]');
+  assert.ok(prismaAi, 'PRISMA modal carries an independent AI statistics block');
+  assert.match(prismaAi.textContent, /一致率/);
+  assert.match(prismaAi.textContent, /不计入上方流程数字/);
+});

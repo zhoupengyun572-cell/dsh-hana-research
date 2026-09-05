@@ -30,8 +30,8 @@ function request(api, method, pathname, body) {
 
 test("schema v15 adds evidence field and value tables", (t) => {
   const { store } = fixture(t);
-  assert.equal(RESEARCH_SCHEMA_VERSION, 19);
-  assert.equal(store.getMetaValue("schema_version"), "19");
+  assert.equal(RESEARCH_SCHEMA_VERSION, 22);
+  assert.equal(store.getMetaValue("schema_version"), "22");
   const tables = new Set(store.db.prepare("SELECT name FROM sqlite_master WHERE type='table'").all().map(row => row.name));
   assert.ok(tables.has("project_evidence_fields"));
   assert.ok(tables.has("project_paper_evidence_values"));
@@ -118,7 +118,7 @@ test("v15 migration creates one recoverable backup for a v14 database", () => {
     db.prepare("UPDATE research_meta SET value='14' WHERE key='schema_version'").run();
     db.close();
     const migrated = new ResearchStore(dir, { seedDemoData: true });
-    assert.equal(migrated.getMetaValue("schema_version"), "19");
+    assert.equal(migrated.getMetaValue("schema_version"), "22");
     migrated.close();
     const firstCount = fs.readdirSync(dir).filter(name => name.includes(".bak-v15-")).length;
     assert.equal(firstCount, 1);

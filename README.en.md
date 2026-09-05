@@ -6,7 +6,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/zhoupengyun572-cell/dsh-hana-research/releases/tag/v0.4.0-beta.1"><img alt="Release" src="https://img.shields.io/github/v/release/zhoupengyun572-cell/dsh-hana-research?include_prereleases&style=flat-square"></a>
+  <a href="https://github.com/zhoupengyun572-cell/dsh-hana-research/releases/tag/v0.5.0-beta.1"><img alt="Release" src="https://img.shields.io/github/v/release/zhoupengyun572-cell/dsh-hana-research?include_prereleases&style=flat-square"></a>
   <a href="https://github.com/zhoupengyun572-cell/dsh-hana-research/actions/workflows/ci.yml"><img alt="CI" src="https://img.shields.io/github/actions/workflow/status/zhoupengyun572-cell/dsh-hana-research/ci.yml?branch=main&style=flat-square&label=CI"></a>
   <a href="LICENSE"><img alt="MIT License" src="https://img.shields.io/badge/license-MIT-blue.svg?style=flat-square"></a>
   <img alt="Node.js 22.13+" src="https://img.shields.io/badge/Node.js-%E2%89%A522.13-43853d?style=flat-square&logo=node.js&logoColor=white">
@@ -22,7 +22,7 @@
 ![Hana Research reader with PDF annotations and structured literature notes](docs/images/reader-workspace.png)
 
 > [!IMPORTANT]
-> `0.4.0-beta.1` targets the DeepSeek Harness developer preview. The full workflow has been validated on Windows; automated CI covers Ubuntu/Windows with Node.js 22 and 24.
+> `0.5.0-beta.1` targets the DeepSeek Harness developer preview. The full workflow has been validated on Windows; automated CI covers Ubuntu/Windows with Node.js 22 and 24.
 
 ## What it does
 
@@ -79,12 +79,12 @@ The screenshots use a synthetic demonstration PDF and public bibliographic metad
 Install [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) first, then pin the plugin to the published tag:
 
 ```powershell
-dsh plugin --profile web add github:zhoupengyun572-cell/dsh-hana-research#v0.4.0-beta.1
+dsh plugin --profile web add github:zhoupengyun572-cell/dsh-hana-research#v0.5.0-beta.1
 ```
 
 Restart Harness after installation. The packaged `dsh.bundle` activates Hana Research in the `web` profile without manual configuration edits.
 
-The same package is available from the [GitHub Release](https://github.com/zhoupengyun572-cell/dsh-hana-research/releases/tag/v0.4.0-beta.1). SHA-256:
+The same package is available from the [GitHub Release](https://github.com/zhoupengyun572-cell/dsh-hana-research/releases/tag/v0.5.0-beta.1). SHA-256:
 
 ```text
 437495d420fdff5268d8fb5431a06b8f7afcb7702ae4aa7133531f6bd9b2a8e7
@@ -102,7 +102,7 @@ Removing the package does not delete the research database.
 ## Data and security
 
 - Data stays under `$DSH_HOME/plugin-data/hana-research/`: SQLite `research.db`, PDFs, translations, and project-note files.
-- The current database is **schema v19**. Migrations preserve a snapshot when required.
+- The current database is **schema v22**. Migrations preserve a snapshot when required.
 - A new installation starts empty; author projects and demonstration papers are never seeded by default.
 - Agent write tools require user confirmation and remain subject to Harness approval and local audit records.
 - Network destinations, PDF download restrictions, and remaining dependency risks are documented in [SECURITY.md](SECURITY.md).

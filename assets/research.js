@@ -887,6 +887,7 @@ function renderLiterature(message = '') {
     <div class="search-desk research-command"><label class="search-field">${searchIcon}<input id="live-search" value="${escapeAttr(state.searchQuery)}" placeholder="检索 OpenAlex、Crossref、arXiv 与 PubMed"></label><button class="button primary" id="run-search" ${state.searchBusy ? 'disabled aria-busy="true"' : ''}>${state.searchBusy ? '检索中…' : '检索'}</button></div>
     <div class="literature-utility-row">
       <label class="search-field library-search">${searchIcon}<input id="paper-search" value="${escapeAttr(state.query)}" placeholder="筛选当前文献库"></label>
+      <button class="button quiet-button" id="fulltext-search" title="在全部 PDF 原文中检索（本地索引，不外发）">全文检索</button>
       <label class="compact-select" title="PDF 导入的目标项目"><span>导入到</span><select id="target-project" ${state.projects.length ? '' : 'disabled'}>${projectOptions || '<option>请先创建项目</option>'}</select></label>
       <button class="button filter-toggle ${state.filtersOpen ? 'active' : ''}" id="toggle-filters" aria-expanded="${state.filtersOpen}">筛选${activeFilterCount ? `<b>${activeFilterCount}</b>` : ''}</button>
       <button class="button quiet-button" id="save-search" title="保存当前全网检索">保存检索</button>
@@ -924,6 +925,7 @@ function renderLiterature(message = '') {
     state.query = event.target.value.trim().toLowerCase();
     applyPaperFilters();
   });
+  document.querySelector('#fulltext-search')?.addEventListener('click', renderFulltextSearchModal);
   document.querySelector('#agent-literature')?.addEventListener('click', () => {
     const target = state.projects.find(project => project.id === state.selectedProjectId);
     handoffToAgent(
@@ -1308,6 +1310,7 @@ async function renderProjectSummary(projectId, projectTitle) {
     <span class="composer-kicker">Draft</span>
     <h2>综述草稿 · ${escapeHtml(projectTitle)}</h2>
     <div id="summary-body" class="journal-brief-body"><p class="search-hint">正在调用模型汇总项目笔记…</p></div>
+    <div id="summary-citation-report" class="citation-report" hidden></div>
     <div class="composer-actions"><button type="button" class="button" data-modal-cancel>关闭</button></div>
   </div>`;
   document.body.append(layer);
@@ -1316,10 +1319,37 @@ async function renderProjectSummary(projectId, projectTitle) {
     const result = await api(`/projects/${encodeURIComponent(projectId)}/summary`, { method: 'POST' });
     const body = layer.querySelector('#summary-body');
     body.innerHTML = `<pre class="journal-brief-text">${escapeHtml(result.text)}</pre>`;
+    renderSummaryCitationReport(layer.querySelector('#summary-citation-report'), result.citationReport);
   } catch (error) {
     const body = layer.querySelector('#summary-body');
     body.innerHTML = `<p class="search-hint search-warn">草稿生成失败：${escapeHtml(error.message)}</p>`;
   }
+}
+
+/** AI 草稿的引用核验报告（四态徽标；审计定位：只标记，不自动改写草稿）。 */
+function renderSummaryCitationReport(box, report) {
+  if (!box) return;
+  if (!report || !Array.isArray(report.citations) || !report.citations.length) return;
+  const labels = {
+    verified: { text: '已确认', cls: 'verified' },
+    mismatch: { text: '字段冲突', cls: 'mismatch' },
+    not_found: { text: '未收录·疑似幻觉', cls: 'not_found' },
+    manual_needed: { text: '需人工核对', cls: 'manual' },
+  };
+  const items = report.citations.map(item => {
+    const label = labels[item.status] || labels.manual_needed;
+    const conflictNote = (item.conflicts || []).map(conflict => `${conflict.field}：库内「${conflict.local}」vs 在线「${conflict.remote}」`).join('；');
+    return `<li class="citation-check ${label.cls}">
+      <b>${label.text}</b>
+      <span class="citation-check-raw">${escapeHtml(item.raw)}</span>
+      ${conflictNote ? `<small>${escapeHtml(conflictNote)}</small>` : ''}
+      ${item.note ? `<small>${escapeHtml(item.note)}</small>` : ''}
+    </li>`;
+  }).join('');
+  box.hidden = false;
+  box.innerHTML = `<b>引用核验（Crossref + OpenAlex 双源审计，仅标记不改写）</b>
+    <p class="citation-report-counts">已确认 ${report.counts.verified || 0} · 字段冲突 ${report.counts.mismatch || 0} · 疑似幻觉 ${report.counts.not_found || 0} · 需人工 ${report.counts.manual_needed || 0}</p>
+    <ul>${items}</ul>`;
 }
 
 // P2 增强（P5）：文献关系标注 modal（A 支持/反驳/被 B 引用）
@@ -3494,8 +3524,179 @@ function renderScreeningWorkbench(screening) {
       <div class="screening-final"><small>最终纳入</small><strong>${screening?.finalIncluded || 0}</strong><span>篇研究</span><p>每次判断均保留理由和时间</p></div>
     </div>
     ${dualPanel}
+    ${aiPanelHtml(screening)}
     ${config.enabled ? '' : `<div class="screening-batch" data-screening-batch hidden><span>已选 <b data-screening-selected-count>0</b> 篇</span><label>阶段<select data-screening-batch-stage><option value="title_abstract">题录 / 摘要</option><option value="full_text">全文</option></select></label><label>结论<select data-screening-batch-decision>${screeningOptions('include')}</select></label><button type="button" class="button primary" data-screening-batch-apply>批量应用</button></div>`}
   </section>`;
+}
+
+// ── AI 预筛（第三评审）：只出建议，不改人工字段与 PRISMA 主流程数字 ──
+
+const AI_SCREENING_TIER_LABELS = { 1: '高置信建议', 2: '低置信建议', 3: '建议转人工' };
+const AI_SCREENING_DECISION_LABELS = { include: '建议纳入', exclude: '建议排除', uncertain: '不确定' };
+let aiScreeningPollTimer = null;
+
+function stopAiScreeningPolling() {
+  if (aiScreeningPollTimer) { clearTimeout(aiScreeningPollTimer); aiScreeningPollTimer = null; }
+}
+
+function aiPanelHtml(screening) {
+  const criteriaCount = screening?.criteria?.length || 0;
+  return `<details class="ai-screening-panel" data-ai-panel>
+    <summary><span class="ai-panel-kicker">AI Pre-screen</span><b>AI 预筛（第三评审）</b><em data-ai-panel-badge>${criteriaCount ? '未运行' : '需先配置纳排标准'}</em></summary>
+    <div class="ai-panel-body">
+      <p class="ai-panel-copy">AI 只依据题录与摘要逐篇给出建议（纳入 / 排除 / 不确定 + 置信度），<strong>不会改动人工判断</strong>，也不进入 PRISMA 主流程数字。正式系统综述仍需双人工筛选。</p>
+      <div class="ai-panel-controls" data-ai-controls><p class="ai-panel-empty">正在读取 AI 预筛状态…</p></div>
+      <div class="ai-panel-runs" data-ai-runs></div>
+      <div class="ai-panel-results" data-ai-results></div>
+      <div class="ai-panel-agreement" data-ai-agreement></div>
+    </div>
+  </details>`;
+}
+
+function aiRunStatusText(run) {
+  if (!run) return '未运行';
+  const map = { queued: '排队中', running: `进行中 ${run.processed}/${run.total}`, paused: `已暂停 ${run.processed}/${run.total}`, done: `已完成 ${run.processed}/${run.total}`, failed: '运行失败', cancelled: '已取消' };
+  return map[run.status] || run.status;
+}
+
+function aiRunControlsHtml(runs, criteriaCount) {
+  const active = runs.find(run => ['queued', 'running'].includes(run.status));
+  const latest = runs[0] || null;
+  const criteriaHint = criteriaCount ? '' : ' title="请先在纳排标准中添加至少一条启用中的标准"';
+  if (active) {
+    const percent = active.total ? Math.round((active.processed / active.total) * 100) : 0;
+    return `<div class="ai-progress" role="status"><div class="ai-progress-bar"><i style="width:${percent}%"></i></div><span>${active.processed} / ${active.total} 篇 · ${percent}%</span></div>
+      <div class="ai-panel-buttons"><button type="button" class="button" data-ai-pause="${escapeAttr(active.id)}">暂停</button><button type="button" class="button danger-text" data-ai-cancel="${escapeAttr(active.id)}">取消</button></div>`;
+  }
+  if (latest && latest.status === 'paused') {
+    return `<p class="ai-panel-state">上次运行已暂停（${latest.processed}/${latest.total}），可从断点继续，已完成的不重复消耗额度。</p>
+      <div class="ai-panel-buttons"><button type="button" class="button primary" data-ai-resume="${escapeAttr(latest.id)}"${criteriaHint}>从断点继续</button><button type="button" class="button" data-ai-run${criteriaHint}>重新运行</button></div>`;
+  }
+  if (latest && latest.status === 'failed') {
+    return `<p class="ai-panel-state failed">上次运行失败：${escapeHtml(latest.error || '未知错误')}。可从断点继续，已完成的不重复消耗额度。</p>
+      <div class="ai-panel-buttons"><button type="button" class="button primary" data-ai-resume="${escapeAttr(latest.id)}"${criteriaHint}>从断点继续</button><button type="button" class="button" data-ai-run${criteriaHint}>重新运行</button></div>`;
+  }
+  return `<div class="ai-panel-buttons"><button type="button" class="button primary" data-ai-run${criteriaHint}>运行 AI 预筛</button><span class="ai-panel-scope">对全部待筛文献逐篇判断</span></div>`;
+}
+
+function aiResultsHtml(results) {
+  if (!results?.length) return '';
+  const tiers = [1, 2, 3];
+  return `<div class="ai-result-groups">${tiers.map(tier => {
+    const items = results.filter(item => item.tier === tier);
+    if (!items.length) return '';
+    return `<div class="ai-tier-group"><span class="ai-tier-title">${AI_SCREENING_TIER_LABELS[tier]} · ${items.length}</span>${items.slice(0, 20).map(item => `<article class="ai-result">
+      <div class="ai-result-head"><b class="ai-decision ${escapeAttr(item.decision)}">${AI_SCREENING_DECISION_LABELS[item.decision] || item.decision}</b><span class="ai-confidence">置信 ${Math.round((item.confidence || 0) * 100)}%</span>${item.decision === 'uncertain' ? '' : `<button type="button" class="button" data-ai-adopt="${escapeAttr(item.paperId)}" data-ai-stage="${escapeAttr(item.stage)}" data-ai-decision="${escapeAttr(item.decision)}">采纳为初筛</button>`}</div>
+      <strong>${escapeHtml(item.title || item.paperId)}</strong>
+      ${item.rationale ? `<p>${escapeHtml(item.rationale)}</p>` : ''}
+    </article>`).join('')}${items.length > 20 ? `<p class="ai-panel-empty">其余 ${items.length - 20} 条从略，请逐篇人工复核。</p>` : ''}</div>`;
+  }).join('')}</div>`;
+}
+
+function aiAgreementHtml(agreement) {
+  if (!agreement?.available) return '';
+  const percent = value => (value === null || value === undefined ? '—' : `${value}%`);
+  return `<div class="ai-agreement"><span>AI 辅助统计 · 独立口径</span><p>与人工最终结论一致率 <b>${percent(agreement.agreementRate)}</b> · 敏感度 ${percent(agreement.sensitivity)} · 特异度 ${percent(agreement.specificity)} · 差异 ${agreement.overrides} 处${agreement.criteriaChanged ? ' · <i>纳排标准已修改，结果基于旧标准</i>' : ''}<br><small>样本 ${agreement.sampleSize} 篇（人工已筛）；AI 建议不进入 PRISMA 主流程数字。</small></p></div>`;
+}
+
+async function refreshAiScreeningPanel(panel, ctx) {
+  const projectId = ctx.projectId;
+  const controls = panel.querySelector('[data-ai-controls]');
+  const runsBox = panel.querySelector('[data-ai-runs]');
+  const resultsBox = panel.querySelector('[data-ai-results]');
+  const agreementBox = panel.querySelector('[data-ai-agreement]');
+  const badge = panel.querySelector('[data-ai-panel-badge]');
+  if (!controls || !runsBox) return;
+  let runs = [];
+  try {
+    runs = (await api(`/projects/${encodeURIComponent(projectId)}/screening/ai-runs`)).runs || [];
+  } catch { /* 旧宿主未重启时接口可能不存在：面板保持空态 */ }
+  const active = runs.find(run => ['queued', 'running'].includes(run.status));
+  const latest = runs[0] || null;
+  const criteriaCount = ctx.screening?.criteria?.length || 0;
+  if (badge) badge.textContent = active ? aiRunStatusText(active) : aiRunStatusText(latest);
+  controls.innerHTML = aiRunControlsHtml(runs, criteriaCount);
+  runsBox.innerHTML = runs.length ? runs.slice(0, 4).map(run => `<article class="ai-run"><span class="ai-run-stage">${run.stage === 'full_text' ? '全文' : '题录/摘要'}</span><span class="ai-run-status ${escapeAttr(run.status)}">${aiRunStatusText(run)}</span><span class="ai-run-decisions">纳入 ${run.included} · 排除 ${run.excluded} · 不确定 ${run.uncertain}</span></article>`).join('') : '';
+  bindAiScreeningControls(panel, ctx);
+  resultsBox.innerHTML = '';
+  agreementBox.innerHTML = '';
+  if (latest && !active) {
+    try {
+      const [resultsData, agreement] = await Promise.all([
+        api(`/projects/${encodeURIComponent(projectId)}/screening/ai?runId=${encodeURIComponent(latest.id)}`),
+        api(`/projects/${encodeURIComponent(projectId)}/screening/ai-agreement?stage=${encodeURIComponent(latest.stage)}&runId=${encodeURIComponent(latest.id)}`).catch(() => ({ available: false })),
+      ]);
+      if (panel.isConnected && panel.open) {
+        panel.__aiResults = resultsData.results || [];
+        resultsBox.innerHTML = aiResultsHtml(panel.__aiResults);
+        agreementBox.innerHTML = aiAgreementHtml(agreement);
+        bindAiScreeningControls(panel, ctx);
+      }
+    } catch { /* ignore */ }
+  }
+  stopAiScreeningPolling();
+  if (active && panel.isConnected && panel.open) {
+    aiScreeningPollTimer = setTimeout(() => {
+      if (!panel.isConnected || !panel.open) { aiScreeningPollTimer = null; return; }
+      refreshAiScreeningPanel(panel, ctx);
+    }, 2500);
+  }
+}
+
+function bindAiScreeningControls(panel, ctx) {
+  const projectId = ctx.projectId;
+  const controls = panel.querySelector('[data-ai-controls]');
+  if (!controls) return;
+  const criteriaCount = ctx.screening?.criteria?.length || 0;
+  controls.querySelectorAll('[data-ai-run]').forEach(button => button.addEventListener('click', async () => {
+    if (!criteriaCount) { showNotice('请先配置纳排标准，再运行 AI 预筛。', true); return; }
+    const pending = Number(ctx.screening?.titleAbstract?.pending || 0);
+    const ok = await confirmDialog({
+      title: '运行 AI 预筛',
+      message: `AI 将以第三评审身份，对 ${pending} 篇待筛文献的题录与摘要逐篇给出建议。只会阅读，不会改动人工结论；会消耗宿主模型额度，可随时暂停。`,
+      confirmLabel: '开始预筛',
+    });
+    if (!ok) return;
+    const action = await runButtonAction(button, { key: `ai-screening-run:${projectId}`, slowMessage: '正在创建 AI 预筛任务…', errorPrefix: 'AI 预筛启动失败' }, () => api(`/projects/${encodeURIComponent(projectId)}/screening/ai-runs`, { method: 'POST', body: JSON.stringify({ stage: 'title_abstract' }) }));
+    if (!action.ok) return;
+    showNotice('AI 预筛已开始，可稍后回到本面板查看进度。');
+    await refreshAiScreeningPanel(panel, ctx);
+  }));
+  controls.querySelectorAll('[data-ai-pause]').forEach(button => button.addEventListener('click', async () => {
+    const action = await runButtonAction(button, { key: `ai-screening-pause:${button.dataset.aiPause}`, errorPrefix: '暂停失败' }, () => api(`/projects/${encodeURIComponent(projectId)}/screening/ai-runs/${encodeURIComponent(button.dataset.aiPause)}/pause`, { method: 'POST', body: '{}' }));
+    if (!action.ok) return;
+    showNotice('AI 预筛已暂停，可随时从断点继续。');
+    await refreshAiScreeningPanel(panel, ctx);
+  }));
+  controls.querySelectorAll('[data-ai-cancel]').forEach(button => button.addEventListener('click', async () => {
+    const ok = await confirmDialog({ title: '取消 AI 预筛', message: '取消后已完成的结果仍保留；如需继续可重新运行。', confirmLabel: '取消任务' });
+    if (!ok) return;
+    const action = await runButtonAction(button, { key: `ai-screening-cancel:${button.dataset.aiCancel}`, errorPrefix: '取消失败' }, () => api(`/projects/${encodeURIComponent(projectId)}/screening/ai-runs/${encodeURIComponent(button.dataset.aiCancel)}/cancel`, { method: 'POST', body: '{}' }));
+    if (!action.ok) return;
+    showNotice('AI 预筛任务已取消。');
+    await refreshAiScreeningPanel(panel, ctx);
+  }));
+  controls.querySelectorAll('[data-ai-resume]').forEach(button => button.addEventListener('click', async () => {
+    const action = await runButtonAction(button, { key: `ai-screening-resume:${button.dataset.aiResume}`, errorPrefix: '恢复失败' }, () => api(`/projects/${encodeURIComponent(projectId)}/screening/ai-runs/${encodeURIComponent(button.dataset.aiResume)}/resume`, { method: 'POST', body: '{}' }));
+    if (!action.ok) return;
+    showNotice('AI 预筛已从断点继续。');
+    await refreshAiScreeningPanel(panel, ctx);
+  }));
+  panel.querySelectorAll('[data-ai-results] [data-ai-adopt]').forEach(button => button.addEventListener('click', async () => {
+    const paperId = button.dataset.aiAdopt;
+    const stage = button.dataset.aiStage || 'title_abstract';
+    const decision = button.dataset.aiDecision || 'include';
+    const result = (panel.__aiResults || []).find(item => item.paperId === paperId && item.stage === stage);
+    const reason = `AI 建议（置信 ${Math.round((result?.confidence || 0) * 100)}%）：${result?.rationale || '无理由'}`.slice(0, 480);
+    const dualEnabled = ctx.screening?.dualScreening?.config?.enabled === true;
+    const reviewer = dualEnabled ? activeDualReviewer(projectId) : null;
+    const path = dualEnabled
+      ? `/projects/${encodeURIComponent(projectId)}/papers/${encodeURIComponent(paperId)}/screening/reviews/${reviewer}`
+      : `/projects/${encodeURIComponent(projectId)}/papers/${encodeURIComponent(paperId)}/screening`;
+    const action = await runButtonAction(button, { key: `ai-adopt:${projectId}:${paperId}:${stage}:${reviewer || 'legacy'}`, errorPrefix: '采纳 AI 建议失败' }, () => api(path, { method: 'PATCH', body: JSON.stringify({ stage, decision, reason }) }));
+    if (!action.ok) return;
+    showNotice(`已把 AI 建议「${AI_SCREENING_DECISION_LABELS[decision] || decision}」复制为${dualEnabled ? `审查者 ${String(reviewer).toUpperCase()} 的` : ''}初筛判断，理由已标注 AI 来源。`);
+  }));
 }
 
 function renderCodingWorkbench(coding) {
@@ -3743,6 +3944,23 @@ function renderPrismaFlow(prisma) {
   </div>`;
 }
 
+/** PRISMA 弹窗的「AI 辅助」独立统计块：只对比 AI 建议与人工结论，不修改任何流程数字。 */
+async function fillPrismaAiBlock(layer, ctx) {
+  const box = layer.querySelector('[data-prisma-ai]');
+  if (!box) return;
+  const percent = value => (value === null || value === undefined ? '—' : `${value}%`);
+  try {
+    const stages = await Promise.all(['title_abstract', 'full_text'].map(stage =>
+      api(`/projects/${encodeURIComponent(ctx.projectId)}/screening/ai-agreement?stage=${stage}`).catch(() => ({ available: false }))));
+    const available = stages.filter(item => item?.available);
+    box.innerHTML = `<b>AI 辅助（独立统计，不计入上方流程数字）</b>${available.length
+      ? available.map(item => `<p>${item.stage === 'full_text' ? '全文' : '题录/摘要'}：一致率 ${percent(item.agreementRate)} · 敏感度 ${percent(item.sensitivity)} · 特异度 ${percent(item.specificity)} · 待复核差异 ${item.overrides} 处（样本 ${item.sampleSize} 篇）</p>`).join('')
+      : '<p>尚未运行 AI 预筛。运行后这里会显示 AI 建议与人工筛选的一致率，仅供方法学参考。</p>'}`;
+  } catch {
+    box.innerHTML = '<b>AI 辅助</b><p>统计暂不可用。</p>';
+  }
+}
+
 function renderPrismaModal(ctx) {
   closeModalLayer();
   const prisma = ctx.screening?.prisma || { batches: [], warnings: [] };
@@ -3753,6 +3971,7 @@ function renderPrismaModal(ctx) {
     <header class="prisma-modal-head"><div><span class="composer-kicker">PRISMA 2020 · Audit ledger</span><h2>文献识别与筛选流程</h2><p class="modal-copy">流程数字来自检索批次、项目筛选结论和全文获取记录。未登记的数据会明确提示，不会用当前文献数倒推。</p></div><div class="prisma-export-actions"><a class="button" href="${escapeAttr(apiUrl(`/projects/${encodeURIComponent(ctx.projectId)}/prisma/export?format=svg`))}" download>流程图 SVG</a><a class="button" href="${escapeAttr(apiUrl(`/projects/${encodeURIComponent(ctx.projectId)}/prisma/export?format=csv`))}" download>审计台账 CSV</a><a class="button" href="${escapeAttr(apiUrl(`/projects/${encodeURIComponent(ctx.projectId)}/prisma/export?format=json`))}" download>原始数据 JSON</a></div></header>
     <div class="prisma-modal-body"><section>${renderPrismaFlow(prisma)}</section><aside class="prisma-ledger">
       ${(prisma.warnings || []).length ? `<div class="prisma-warning"><b>口径尚未完全对齐</b>${prisma.warnings.map(item => `<p>${escapeHtml(item)}</p>`).join('')}</div>` : '<div class="prisma-ready"><b>流程数字已对齐</b><p>已登记批次与当前项目文献数量一致。</p></div>'}
+      <div class="prisma-ai-block" data-prisma-ai aria-live="polite"><b>AI 辅助</b><p>正在读取 AI 预筛统计…</p></div>
       <div class="prisma-ledger-head"><div><span>SEARCH LOG</span><h3>检索批次 · ${batches.length}</h3></div><button type="button" class="button primary" data-prisma-batch-new>＋ 登记批次</button></div>
       <div class="prisma-batch-list">${batches.length ? batches.map(batch => `<article data-prisma-batch="${escapeAttr(batch.id)}"><div><span>${escapeHtml(prismaSourceLabel(batch.sourceType))}${batch.searchedAt ? ` · ${escapeHtml(String(batch.searchedAt).slice(0, 10))}` : ''}</span><strong>${escapeHtml(batch.sourceName)}</strong><p>发现 ${batch.recordsFound} · 去重 ${batch.duplicatesRemoved} · 其他移除 ${batch.removedOther} · 导入 ${batch.recordsImported}</p>${batch.query ? `<small title="${escapeAttr(batch.query)}">${escapeHtml(batch.query.slice(0, 90))}${batch.query.length > 90 ? '…' : ''}</small>` : ''}</div><div><button type="button" data-prisma-batch-edit="${escapeAttr(batch.id)}">编辑</button><button type="button" class="danger-text" data-prisma-batch-delete="${escapeAttr(batch.id)}">删除</button></div></article>`).join('') : '<p class="prisma-empty">尚未登记检索批次。建议按数据库、注册平台或其他来源分别记录。</p>'}</div>
       <div class="prisma-reasons"><span>FULL-TEXT EXCLUSIONS</span><h3>全文排除理由</h3>${reasons.length ? `<ul>${reasons.map(item => `<li><span>${escapeHtml(item.reason)}</span><b>${item.count}</b></li>`).join('')}</ul>` : '<p>尚无全文排除记录。</p>'}</div>
@@ -3760,6 +3979,7 @@ function renderPrismaModal(ctx) {
     <div class="composer-actions"><button type="button" class="button" data-modal-cancel>关闭</button></div>
   </div>`;
   document.body.append(layer);
+  fillPrismaAiBlock(layer, ctx);
   layer.querySelector('[data-modal-cancel]')?.addEventListener('click', closeModalLayer);
   layer.querySelector('[data-prisma-batch-new]')?.addEventListener('click', () => renderPrismaBatchModal(ctx));
   layer.querySelectorAll('[data-prisma-batch-edit]').forEach(button => button.addEventListener('click', () => renderPrismaBatchModal(ctx, batches.find(item => item.id === button.dataset.prismaBatchEdit))));
@@ -4234,6 +4454,11 @@ function bindDrawer(panel, ctx) {
     await openProjectDrawer(projectId);
   }));
   panel.querySelectorAll('[data-dual-conflicts]').forEach(button => button.addEventListener('click', () => renderDualConflictQueue(ctx)));
+  // AI 预筛：面板展开时懒加载运行状态，收起时停止轮询
+  panel.querySelectorAll('[data-ai-panel]').forEach(details => details.addEventListener('toggle', () => {
+    if (details.open) refreshAiScreeningPanel(details, ctx);
+    else stopAiScreeningPolling();
+  }));
   panel.querySelectorAll('#evidence-fields, [data-evidence-fields]').forEach(button => button.addEventListener('click', () => renderEvidenceFieldsModal(ctx)));
   panel.querySelectorAll('#evidence-matrix, [data-evidence-matrix-open]').forEach(btn => btn.addEventListener('click', () => renderEvidenceMatrixModal(projectId, ctx.project.title)));
   panel.querySelectorAll('#quality-workbench, [data-quality-open]').forEach(btn => btn.addEventListener('click', () => renderQualityModal(ctx)));
@@ -4720,6 +4945,77 @@ function openDialogPanel({ kicker = 'Confirm', title, message = '', bodyHtml = '
 }
 
 /** 确认框：resolve(true)=确认；resolve(false)=取消/Esc/遮罩。 */
+// ── 全文检索（v21：本地 PDF 原文，FTS5；索引与检索都不外发） ──
+
+function fulltextSnippetHtml(snippet) {
+  return escapeHtml(snippet || '')
+    .replace(/⟦/g, '<mark>')
+    .replace(/⟧/g, '</mark>');
+}
+
+async function runFulltextSearch(panel, query) {
+  const resultsBox = panel.querySelector('[data-fulltext-results]');
+  const statusBox = panel.querySelector('[data-fulltext-status]');
+  const trimmed = String(query || '').trim();
+  if (!trimmed) { resultsBox.innerHTML = '<p class="fulltext-empty">输入关键词，在全部 PDF 原文中查找（支持中文与英文）。</p>'; return; }
+  resultsBox.innerHTML = '<p class="fulltext-empty">正在检索…</p>';
+  try {
+    const [data, status] = await Promise.all([
+      api(`/search/fulltext?q=${encodeURIComponent(trimmed)}&limit=20`),
+      api('/search/fulltext/status').catch(() => null),
+    ]);
+    if (statusBox && status) {
+      statusBox.textContent = `索引：可检索 ${status.ready} 份 · 待索引 ${status.pending} 份${status.failed ? ` · 失败 ${status.failed} 份` : ''}${status.empty ? ` · 无文本层 ${status.empty} 份` : ''}`;
+    }
+    if (!data.hits?.length) {
+      resultsBox.innerHTML = `<p class="fulltext-empty">没有在 PDF 原文中找到「${escapeHtml(trimmed)}」。${status && status.pending > 0 ? '有文献尚未建立索引，可点击下方「重建索引」。' : ''}</p>`;
+      return;
+    }
+    resultsBox.innerHTML = data.hits.map(hit => `<article class="fulltext-result">
+      <div class="fulltext-result-head"><strong>${escapeHtml(hit.title || hit.paperId)}</strong><span>${escapeHtml(hit.venue || '')}${hit.year ? ` · ${escapeHtml(hit.year)}` : ''}</span></div>
+      ${hit.matches.map(match => `<p class="fulltext-match"><b>第 ${match.page} 页</b>${fulltextSnippetHtml(match.snippet)}</p>`).join('')}
+      <div class="fulltext-result-foot">${hit.projectId && hit.attachmentId ? `<a class="button" href="${escapeAttr(`/ui/hana-research/reader?projectId=${encodeURIComponent(hit.projectId)}&attachmentId=${encodeURIComponent(hit.attachmentId)}`)}">打开 PDF</a>` : '<span class="fulltext-hint">该文献未加入项目，暂不能跳转阅读</span>'}</div>
+    </article>`).join('');
+  } catch (error) {
+    resultsBox.innerHTML = `<p class="fulltext-empty">检索失败：${escapeHtml(error.message || '未知错误')}</p>`;
+  }
+}
+
+function renderFulltextSearchModal() {
+  closeModalLayer();
+  const layer = openModalLayer();
+  layer.innerHTML = `<div class="modal-panel fulltext-modal" role="dialog" aria-modal="true" aria-label="全文检索">
+    <span class="composer-kicker">Full-text search</span>
+    <h2>在 PDF 原文中检索</h2>
+    <p class="modal-copy">检索范围是本地已导入 PDF 的全文内容（每页定位、关键词高亮）。索引与查询都在本地完成，内容不会外发。</p>
+    <form class="fulltext-form" data-fulltext-form>
+      <input name="q" maxlength="200" placeholder="例如：正念 干预 / working memory" autocomplete="off">
+      <button type="submit" class="button primary">检索</button>
+    </form>
+    <p class="fulltext-status" data-fulltext-status></p>
+    <div class="fulltext-results" data-fulltext-results><p class="fulltext-empty">输入关键词开始检索。</p></div>
+    <div class="composer-actions"><button type="button" class="button" data-fulltext-rebuild>重建索引</button><button type="button" class="button" data-modal-cancel>关闭</button></div>
+  </div>`;
+  document.body.append(layer);
+  layer.querySelector('[data-modal-cancel]').addEventListener('click', closeModalLayer);
+  const form = layer.querySelector('[data-fulltext-form]');
+  form.addEventListener('submit', event => {
+    event.preventDefault();
+    runFulltextSearch(layer, form.q.value);
+  });
+  form.q.focus();
+  api('/search/fulltext/status').then(status => {
+    const box = layer.querySelector('[data-fulltext-status]');
+    if (box && status) box.textContent = `索引：可检索 ${status.ready} 份 · 待索引 ${status.pending} 份${status.failed ? ` · 失败 ${status.failed} 份` : ''}${status.empty ? ` · 无文本层 ${status.empty} 份` : ''}`;
+  }).catch(() => { /* 旧宿主未重启时忽略 */ });
+  layer.querySelector('[data-fulltext-rebuild]').addEventListener('click', async event => {
+    const action = await runButtonAction(event.currentTarget, { key: 'fulltext-rebuild', slowMessage: '正在排队重建…', errorPrefix: '重建索引失败' }, () => api('/search/fulltext/rebuild', { method: 'POST', body: JSON.stringify({ force: false }) }));
+    if (!action.ok) return;
+    showNotice(`已排队重建 ${action.value.queued} 份 PDF 的全文索引，稍后自动完成。`);
+    runFulltextSearch(layer, form.q.value);
+  });
+}
+
 function confirmDialog({ title = '确认操作', message = '', confirmLabel = '确认', cancelLabel = '取消', danger = false } = {}) {
   return new Promise(resolve => {
     let settled = false;

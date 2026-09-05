@@ -75,11 +75,11 @@ function runExec(def, args, agentId = "s-compat") {
 	});
 }
 
-test("defineTool compiles all 20 tools with parameters + output", (t) => {
+test("defineTool compiles all 21 tools with parameters + output", (t) => {
 	const store = makeStore(t);
 	const host = makeHost();
 	registerResearchTools(host.ctx, store);
-	assert.equal(host.registered.length, 20, "20 tools registered");
+	assert.equal(host.registered.length, 21, "21 tools registered");
 	const searchDef = host.registered.find((def) => def.name === "hana_research_search_literature");
 	assert.match(searchDef.description, /使用指引/);
 	for (const def of host.registered) {

@@ -30,8 +30,8 @@ function request(api, method, pathname, body) {
 
 test('schema v18 adds PRISMA batches and retrieval audit fields', (t) => {
   const { store } = fixture(t);
-  assert.equal(RESEARCH_SCHEMA_VERSION, 19);
-  assert.equal(store.getMetaValue('schema_version'), '19');
+  assert.equal(RESEARCH_SCHEMA_VERSION, 22);
+  assert.equal(store.getMetaValue('schema_version'), '22');
   const columns = new Set(store.db.prepare('PRAGMA table_info(project_papers)').all().map(row => row.name));
   for (const name of ['retrieval_status', 'retrieval_reason', 'retrieval_updated_at']) assert.ok(columns.has(name), name);
   assert.equal(store.db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='project_prisma_batches'").get()?.name, 'project_prisma_batches');

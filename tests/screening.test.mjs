@@ -30,8 +30,8 @@ function request(api, method, pathname, body) {
 
 test("schema v14 adds project-specific screening fields and criteria table", (t) => {
   const { store } = fixture(t);
-  assert.equal(RESEARCH_SCHEMA_VERSION, 19);
-  assert.equal(store.getMetaValue("schema_version"), "19");
+  assert.equal(RESEARCH_SCHEMA_VERSION, 22);
+  assert.equal(store.getMetaValue("schema_version"), "22");
   const columns = new Set(store.db.prepare("PRAGMA table_info(project_papers)").all().map(row => row.name));
   for (const name of ["title_abstract_decision", "title_abstract_reason", "full_text_decision", "full_text_reason", "screening_updated_at"]) assert.ok(columns.has(name), name);
   const table = store.db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='project_screening_criteria'").get();
@@ -156,7 +156,7 @@ test("v13 migration creates one recoverable v14 backup and reaches current schem
     db.prepare("UPDATE research_meta SET value='13' WHERE key='schema_version'").run();
     db.close();
     const migrated = new ResearchStore(dir, { seedDemoData: true });
-    assert.equal(migrated.getMetaValue("schema_version"), "19");
+    assert.equal(migrated.getMetaValue("schema_version"), "22");
     migrated.close();
     const firstCount = fs.readdirSync(dir).filter(name => name.includes(".bak-v14-")).length;
     assert.equal(firstCount, 1);

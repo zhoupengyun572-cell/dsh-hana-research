@@ -2741,6 +2741,94 @@ button[aria-busy="true"], .button[aria-busy="true"] { cursor: wait; }
 .dual-conflict-button.has-conflict b { color: var(--research-danger); }
 .dual-screening-panel > p { grid-column: 1 / -1; margin: -1px 0 0; color: var(--research-muted); font-size: 11px; }
 .dual-screening-panel > p strong { color: var(--research-accent-ink); }
+
+/* ── AI 预筛（第三评审）：只出建议，不改人工字段与 PRISMA 主流程数字 ── */
+.ai-screening-panel { margin-top: 12px; border: 1px dashed color-mix(in srgb, var(--research-accent) 34%, var(--research-line)); border-radius: var(--research-radius-card); background: color-mix(in srgb, var(--research-paper) 92%, transparent); }
+.ai-screening-panel > summary { display: flex; align-items: center; gap: 8px; padding: 10px 12px; cursor: pointer; list-style: none; }
+.ai-screening-panel > summary::-webkit-details-marker { display: none; }
+.ai-screening-panel > summary:focus-visible { outline: 2px solid var(--research-accent); outline-offset: 2px; border-radius: var(--research-radius-control); }
+.ai-panel-kicker { color: var(--research-faint); font-size: 10px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
+.ai-screening-panel > summary > b { font-family: var(--research-serif-display); font-size: 13px; color: var(--research-ink); }
+.ai-screening-panel > summary > em { margin-left: auto; color: var(--research-muted); font-size: 11px; font-style: normal; font-weight: 700; }
+.ai-panel-body { display: grid; gap: 10px; padding: 0 12px 12px; }
+.ai-panel-copy { margin: 0; color: var(--research-muted); font-size: 11px; line-height: 1.6; }
+.ai-panel-copy strong { color: var(--research-accent-ink); }
+.ai-panel-buttons { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+.ai-panel-scope { color: var(--research-faint); font-size: 11px; }
+.ai-panel-empty, .ai-panel-state { margin: 0; color: var(--research-muted); font-size: 11px; }
+.ai-panel-state.failed { color: var(--research-danger); }
+.ai-progress { display: flex; align-items: center; gap: 10px; }
+.ai-progress-bar { flex: 1; max-width: 320px; height: 6px; overflow: hidden; border-radius: 999px; background: color-mix(in srgb, var(--research-accent) 16%, var(--research-line)); }
+.ai-progress-bar i { display: block; height: 100%; border-radius: 999px; background: var(--research-accent); transition: width .4s ease; }
+.ai-progress > span { color: var(--research-muted); font-size: 11px; font-weight: 700; }
+.ai-run { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 6px 9px; border: 1px solid var(--research-line); border-radius: var(--research-radius-control); background: color-mix(in srgb, var(--research-paper) 88%, transparent); color: var(--research-muted); font-size: 11px; }
+.ai-run-status { font-weight: 700; }
+.ai-run-status.running, .ai-run-status.queued { color: var(--research-accent-ink); font-weight: 800; }
+.ai-run-status.done { color: var(--research-ink); font-weight: 800; }
+.ai-run-status.failed { color: var(--research-danger); font-weight: 800; }
+.ai-run-decisions { margin-left: auto; color: var(--research-faint); }
+.ai-tier-group { display: grid; gap: 6px; }
+.ai-tier-title { color: var(--research-faint); font-size: 10px; font-weight: 800; letter-spacing: .07em; }
+.ai-result { display: grid; gap: 4px; padding: 8px 10px; border: 1px solid var(--research-line); border-radius: var(--research-radius-control); background: var(--research-card); }
+.ai-result-head { display: flex; align-items: center; gap: 8px; }
+.ai-decision { font-size: 11px; font-weight: 800; }
+.ai-decision.include { color: var(--research-ok); }
+.ai-decision.exclude { color: var(--research-danger); }
+.ai-decision.uncertain { color: var(--research-muted); }
+.ai-confidence { color: var(--research-faint); font-size: 11px; font-weight: 700; }
+.ai-result-head .button { margin-left: auto; padding: 4px 10px; font-size: 11px; }
+.ai-result > strong { font-family: var(--research-serif); font-size: 12px; color: var(--research-ink); }
+.ai-result > p { margin: 0; color: var(--research-muted); font-size: 11px; line-height: 1.6; }
+.ai-agreement { padding: 8px 10px; border-radius: var(--research-radius-control); background: color-mix(in srgb, var(--research-accent-soft) 45%, transparent); }
+.ai-agreement > span { color: var(--research-faint); font-size: 10px; font-weight: 800; letter-spacing: .07em; }
+.ai-agreement p { margin: 4px 0 0; color: var(--research-muted); font-size: 11px; line-height: 1.6; }
+.ai-agreement b { color: var(--research-ink); font-size: 13px; }
+.prisma-ai-block { margin-top: 10px; padding: 9px 11px; border: 1px dashed color-mix(in srgb, var(--research-accent) 30%, var(--research-line)); border-radius: var(--research-radius-control); color: var(--research-muted); font-size: 11px; line-height: 1.6; }
+.prisma-ai-block b { color: var(--research-ink); }
+.prisma-ai-block p { margin: 4px 0 0; }
+@media (max-width: 560px) {
+  .ai-run-decisions { margin-left: 0; }
+  .ai-result-head .button { margin-left: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ai-progress-bar i { transition: none; }
+}
+
+/* ── 全文检索（v21：本地 PDF 原文 FTS5） ── */
+.fulltext-modal { width: min(720px, calc(100vw - 32px)); }
+.fulltext-form { display: flex; gap: 8px; margin: 10px 0 6px; }
+.fulltext-form input { flex: 1; }
+.fulltext-status { margin: 0 0 8px; color: var(--research-faint); font-size: 11px; }
+.fulltext-results { display: grid; gap: 8px; max-height: min(46vh, 420px); overflow-y: auto; padding-right: 4px; }
+.fulltext-empty { margin: 0; color: var(--research-muted); font-size: 12px; }
+.fulltext-result { display: grid; gap: 6px; padding: 10px 12px; border: 1px solid var(--research-line); border-radius: var(--research-radius-control); background: var(--research-card); }
+.fulltext-result-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+.fulltext-result-head strong { color: var(--research-ink); font-family: var(--research-serif); font-size: 13px; }
+.fulltext-result-head span { flex-shrink: 0; color: var(--research-faint); font-size: 11px; }
+.fulltext-match { display: flex; align-items: baseline; gap: 8px; margin: 0; color: var(--research-muted); font-size: 12px; line-height: 1.7; }
+.fulltext-match b { flex-shrink: 0; color: var(--research-accent-ink); font-size: 11px; }
+.fulltext-match mark { padding: 0 2px; border-radius: 3px; background: color-mix(in srgb, var(--research-accent) 22%, transparent); color: var(--research-ink); font-weight: 700; }
+.fulltext-result-foot { display: flex; align-items: center; }
+.fulltext-result-foot .button { padding: 4px 12px; font-size: 11px; text-decoration: none; }
+.fulltext-hint { color: var(--research-faint); font-size: 11px; }
+@media (max-width: 560px) {
+  .fulltext-result-head { align-items: flex-start; flex-direction: column; gap: 2px; }
+  .fulltext-match { flex-direction: column; gap: 2px; }
+}
+
+/* ── 引用核验报告（v22：四态审计，不改写） ── */
+.citation-report { margin-top: 10px; padding: 10px 12px; border: 1px dashed color-mix(in srgb, var(--research-accent) 30%, var(--research-line)); border-radius: var(--research-radius-control); background: color-mix(in srgb, var(--research-paper) 92%, transparent); font-size: 11px; }
+.citation-report > b { color: var(--research-ink); }
+.citation-report-counts { margin: 4px 0 6px; color: var(--research-muted); }
+.citation-report ul { display: grid; gap: 5px; margin: 0; padding: 0; list-style: none; }
+.citation-check { display: grid; gap: 2px; padding: 6px 9px; border-radius: var(--research-radius); background: var(--research-card); }
+.citation-check b { font-size: 11px; font-weight: 800; }
+.citation-check.verified b { color: var(--research-ok); }
+.citation-check.mismatch b { color: var(--research-warn); }
+.citation-check.not_found b { color: var(--research-danger); }
+.citation-check.manual b { color: var(--research-muted); }
+.citation-check-raw { overflow: hidden; color: var(--research-ink); font-family: var(--research-sans); font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
+.citation-check small { color: var(--research-faint); font-size: 10px; }
 .paper-screening-row.dual { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
 .dual-stage-field { display: grid !important; grid-template-columns: auto minmax(0, 1fr) !important; }
 .dual-stage-field small { grid-column: 2; overflow: hidden; color: var(--research-faint); font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }

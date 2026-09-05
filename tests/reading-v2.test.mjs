@@ -294,9 +294,9 @@ test("annotations-v2: replace/list roundtrip keeps legacy notes link", (t) => {
 test("schema v12 migration is idempotent and preserves legacy subtype backfill", (t) => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "hana-v12-mig-"));
   const store1 = new ResearchStore(dir, { seedDemoData: true });
-  assert.equal(RESEARCH_SCHEMA_VERSION, 19);
+  assert.equal(RESEARCH_SCHEMA_VERSION, 22);
   const meta = store1.db.prepare("SELECT value FROM research_meta WHERE key='schema_version'").get();
-  assert.equal(meta.value, "19");
+  assert.equal(meta.value, "22");
   const tables = store1.db.prepare("SELECT name FROM sqlite_master WHERE type='table'").all().map(r => r.name);
   for (const table of ["paper_reading_state", "paper_note_documents", "note_citations", "sentence_notes", "note_categories"]) {
     assert.ok(tables.includes(table), table);
@@ -316,7 +316,7 @@ test("schema v12 migration is idempotent and preserves legacy subtype backfill",
   const legacy = store2.db.prepare("SELECT subtype FROM annotations WHERE id = 'legacy-1'").get();
   assert.equal(legacy.subtype, "square");
   const version = store2.db.prepare("SELECT value FROM research_meta WHERE key='schema_version'").get();
-  assert.equal(version.value, "19");
+  assert.equal(version.value, "22");
   store2.close();
   clearResearchStoreCache();
   fs.rmSync(dir, { recursive: true, force: true });

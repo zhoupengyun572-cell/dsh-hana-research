@@ -1,6 +1,6 @@
 {
   "name": "dsh-hana-research",
-  "version": "0.4.0-beta.1",
+  "version": "0.5.0-beta.1",
   "description": "Hana Research for DeepSeek Harness: literature discovery, journal tracking, project libraries, PDF reading and research notes.",
   "repository": {
     "type": "git",
@@ -33,6 +33,7 @@
     "tools/create-project-task.js",
     "tools/delete-project-note.js",
     "tools/edit-project-note.js",
+    "tools/get-ai-screening.js",
     "tools/get-project-brief.js",
     "tools/get-reader-context.js",
     "tools/get-research-context.js",

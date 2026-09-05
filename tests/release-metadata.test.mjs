@@ -21,6 +21,7 @@ const RUNTIME_TOOL_FILES = new Set([
 	"tools/create-project-task.js",
 	"tools/delete-project-note.js",
 	"tools/edit-project-note.js",
+	"tools/get-ai-screening.js",
 	"tools/get-project-brief.js",
 	"tools/get-reader-context.js",
 	"tools/get-research-context.js",

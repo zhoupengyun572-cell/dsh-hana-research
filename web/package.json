@@ -1,6 +1,6 @@
 {
   "name": "dsh-hana-research-web",
-  "version": "0.4.0-beta.1",
+  "version": "0.5.0-beta.1",
   "private": true,
   "type": "module",
   "description": "阅读工作区前端构建子项目：EmbedPDF + Tiptap，esbuild 打包为插件静态资产。",

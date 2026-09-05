@@ -177,3 +177,27 @@ test("journal manager routes create, edit, pause and remove custom sources", asy
 	assert.equal(removed.body.papersPreserved, true);
 	assert.equal(store.listJournalSources().some(source => source.id === id), false);
 });
+
+test("project notes file sync coalesces rapid writes and stays consistent", async (t) => {
+	const dir = fs.mkdtempSync(path.join(os.tmpdir(), "hana-notes-sync-"));
+	const store = new ResearchStore(dir, { seedDemoData: false });
+	t.after(() => {
+		clearResearchStoreCache();
+		store.close();
+		fs.rmSync(dir, { recursive: true, force: true });
+	});
+	const project = store.createProject({ title: "延迟同步项目" });
+	// 同一时间窗内连续变更：延迟合并写保证最终一致，且避免逐条整文件重写
+	for (let i = 1; i <= 5; i += 1) {
+		store.createNote({ projectId: project.id, content: `延迟同步笔记 ${i}` });
+	}
+	// 读取路径强制同步：立即包含全部笔记
+	const forced = store.getProjectNotesFile(project.id);
+	assert.match(forced.body, /延迟同步笔记 5/);
+	assert.equal(forced.noteCount, 5);
+	// 时间窗结束后文件落盘为最终状态
+	await new Promise(resolve => setTimeout(resolve, 450));
+	const content = fs.readFileSync(forced.filePath, "utf8");
+	assert.match(content, /延迟同步笔记 5/);
+	assert.match(content, /延迟同步笔记 1/);
+});

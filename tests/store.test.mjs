@@ -26,9 +26,9 @@ function makeTempDir(t) {
 test("schema v19 init: tables, WAL, meta version", (t) => {
 	const dir = makeTempDir(t);
 	const store = new ResearchStore(dir);
-	assert.equal(RESEARCH_SCHEMA_VERSION, 19);
+	assert.equal(RESEARCH_SCHEMA_VERSION, 22);
 	const meta = store.db.prepare("SELECT value FROM research_meta WHERE key = 'schema_version'").get();
-	assert.equal(meta.value, "19");
+	assert.equal(meta.value, "22");
 	const tables = store.db.prepare(
 		"SELECT name FROM sqlite_master WHERE type = 'table' ORDER BY name"
 	).all().map((r) => r.name);

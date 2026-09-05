@@ -6,7 +6,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/zhoupengyun572-cell/dsh-hana-research/releases/tag/v0.4.0-beta.1"><img alt="Release" src="https://img.shields.io/github/v/release/zhoupengyun572-cell/dsh-hana-research?include_prereleases&style=flat-square"></a>
+  <a href="https://github.com/zhoupengyun572-cell/dsh-hana-research/releases/tag/v0.5.0-beta.1"><img alt="Release" src="https://img.shields.io/github/v/release/zhoupengyun572-cell/dsh-hana-research?include_prereleases&style=flat-square"></a>
   <a href="https://github.com/zhoupengyun572-cell/dsh-hana-research/actions/workflows/ci.yml"><img alt="CI" src="https://img.shields.io/github/actions/workflow/status/zhoupengyun572-cell/dsh-hana-research/ci.yml?branch=main&style=flat-square&label=CI"></a>
   <a href="LICENSE"><img alt="MIT License" src="https://img.shields.io/badge/license-MIT-blue.svg?style=flat-square"></a>
   <img alt="Node.js 22.13+" src="https://img.shields.io/badge/Node.js-%E2%89%A522.13-43853d?style=flat-square&logo=node.js&logoColor=white">
@@ -22,7 +22,7 @@
 ![Hana Research 阅读工作台：PDF、批注与结构化文献笔记](docs/images/reader-workspace.png)
 
 > [!IMPORTANT]
-> 当前版本为 `0.4.0-beta.1`，面向 DeepSeek Harness 开发者预览版。Windows 已完成真实端到端验收；Ubuntu/Windows × Node 22/24 已通过自动化 CI。
+> 当前版本为 `0.5.0-beta.1`，面向 DeepSeek Harness 开发者预览版。Windows 已完成真实端到端验收；Ubuntu/Windows × Node 22/24 已通过自动化 CI。
 
 ## 它解决什么问题
 
@@ -43,7 +43,7 @@
 | PDF 精读 | 目录/缩略图/搜索、彩色批注、逐页定位、阅读进度、结构化摘录与文献总结 |
 | 系统综述 | 纳排标准、题录/摘要与全文双阶段筛选、双人独立判断、冲突仲裁、PRISMA 2020 |
 | 证据综合 | 自定义研究编码、RoB 2 / ROBINS-I、GRADE、证据矩阵与论证链 |
-| 导出与协作 | Markdown、DOCX、PDF、CSV、XLSX、BibTeX、RIS；20 个 Harness Agent 工具 |
+| 导出与协作 | Markdown、DOCX、PDF、CSV、XLSX、BibTeX、RIS；21 个 Harness Agent 工具 |
 
 系统综述工具采用渐进披露：如果你只想收藏、阅读和记笔记，可以跳过筛选、编码与质量评定。
 
@@ -79,12 +79,12 @@
 需要已安装的 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) 和 `web` Profile。推荐固定到已发布标签：
 
 ```powershell
-dsh plugin --profile web add github:zhoupengyun572-cell/dsh-hana-research#v0.4.0-beta.1
+dsh plugin --profile web add github:zhoupengyun572-cell/dsh-hana-research#v0.5.0-beta.1
 ```
 
 安装完成后重启 Harness。插件会通过包内 `dsh.bundle` 自动加入 `web` Profile，无需手工编辑配置。
 
-也可以从 [GitHub Release](https://github.com/zhoupengyun572-cell/dsh-hana-research/releases/tag/v0.4.0-beta.1) 下载 `.tgz`。发布包 SHA-256：
+也可以从 [GitHub Release](https://github.com/zhoupengyun572-cell/dsh-hana-research/releases/tag/v0.5.0-beta.1) 下载 `.tgz`。发布包 SHA-256：
 
 ```text
 437495d420fdff5268d8fb5431a06b8f7afcb7702ae4aa7133531f6bd9b2a8e7
@@ -110,7 +110,7 @@ dsh plugin --profile web remove dsh-hana-research
 ## 本地数据与安全边界
 
 - 数据默认存放在 `$DSH_HOME/plugin-data/hana-research/`，包括 SQLite `research.db`、PDF、翻译与项目笔记。
-- 当前数据库为 **schema v19**；升级前会在需要时保留迁移快照。
+- 当前数据库为 **schema v22**；升级前会在需要时保留迁移快照。
 - 新安装默认是空数据库，不自动携带作者项目或演示文献。
 - 写入型 Agent 工具需要用户确认，并由 Harness approval 与本地审计记录约束。
 - 联网检索、开放 PDF 下载、AI 解读与翻译的目标域名和限制见[安全政策](SECURITY.md)。

@@ -21,9 +21,9 @@ function makeStore(t) {
 
 test("current schema: enhancement columns migrate on existing-style init", (t) => {
 	const store = makeStore(t);
-	assert.equal(RESEARCH_SCHEMA_VERSION, 19);
+	assert.equal(RESEARCH_SCHEMA_VERSION, 22);
 	const meta = store.db.prepare("SELECT value FROM research_meta WHERE key='schema_version'").get();
-	assert.equal(meta.value, "19");
+	assert.equal(meta.value, "22");
 	const paperCols = new Set(store.db.prepare("PRAGMA table_info(papers)").all().map(c => c.name));
 	for (const col of ["read_status", "priority", "cited_by_count", "methodology_json", "openalex_id"]) assert.ok(paperCols.has(col), `papers.${col}`);
 	const noteCols = new Set(store.db.prepare("PRAGMA table_info(notes)").all().map(c => c.name));

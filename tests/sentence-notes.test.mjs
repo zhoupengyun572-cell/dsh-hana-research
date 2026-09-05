@@ -55,8 +55,8 @@ test("v13 migration backs up pre-13 DB once and is idempotent on reopen", (t) =>
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "hana-v13-mig-"));
   try {
     const store1 = new ResearchStore(dir, { seedDemoData: true });
-    assert.equal(store1.getMetaValue("schema_version"), "19");
-    assert.equal(RESEARCH_SCHEMA_VERSION, 19);
+    assert.equal(store1.getMetaValue("schema_version"), "22");
+    assert.equal(RESEARCH_SCHEMA_VERSION, 22);
     const backupsAfterFirstOpen = fs.readdirSync(dir).filter(f => f.includes(".bak-v13-")).length;
     assert.ok(backupsAfterFirstOpen >= 1, "首次打开（旧版本库）应生成备份");
     store1.close();

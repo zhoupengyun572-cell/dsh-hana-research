@@ -26,8 +26,8 @@ function request(api, method, pathname, body) {
 
 test('schema v19 creates quality, RoB adjudication and GRADE tables', t => {
   const { store } = fixture(t);
-  assert.equal(RESEARCH_SCHEMA_VERSION, 19);
-  assert.equal(store.getMetaValue('schema_version'), '19');
+  assert.equal(RESEARCH_SCHEMA_VERSION, 22);
+  assert.equal(store.getMetaValue('schema_version'), '22');
   for (const name of ['project_quality_config','paper_rob_reviews','paper_rob_resolutions','project_grade_outcomes','grade_domain_judgments']) {
     assert.equal(store.db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name=?").get(name)?.name, name);
   }
