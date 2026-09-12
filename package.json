@@ -76,7 +76,10 @@
   "dependencies": {
     "docx": "^9.7.1",
     "exceljs": "^4.4.0",
-    "pdfkit": "^0.20.1"
+    "pdfkit": "^0.20.2"
+  },
+  "overrides": {
+    "uuid": "^11.1.1"
   },
   "devDependencies": {
     "@deepseek-ai/dsh-tools": "0.1.1-rc.2"

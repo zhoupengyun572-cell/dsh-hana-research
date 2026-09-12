@@ -6,6 +6,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { pathToFileURL, fileURLToPath } from "node:url";
+import PDFDocument from "pdfkit";
 import { completeWithHostLlm, HostLlmError } from "../lib/host-llm.js";
 import { extractJsonFromAi, normalizeAiRecommendations, aiSummarizeSearch } from "../lib/ai-search.js";
 import { splitIntoChunks, cachedTranslation, storeTranslationCache, translateChunk, TranslationError , flushTranslationCache } from "../lib/translation.js";
@@ -148,13 +149,20 @@ test("translateChunk: no model -> TranslationError", async () => {
 	);
 });
 
-test("extractPdfText works in Node with real PDF", async (t) => {
+test("extractPdfText works in Node with a generated PDF", async (t) => {
 	const dir = fs.mkdtempSync(path.join(os.tmpdir(), "hana-pdfjs-"));
 	t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
-	// 下载一个小 PDF（arxiv abs 页）；全量并发测试时网络偶发慢，超时给足余量
-	const res = await fetch("https://arxiv.org/pdf/1706.03762", { signal: AbortSignal.timeout(60000) });
-	assert.ok(res.ok, "arxiv pdf download");
-	const buf = Buffer.from(await res.arrayBuffer());
+	const chunks = [];
+	const source = new PDFDocument({ autoFirstPage: true });
+	source.on("data", (chunk) => chunks.push(chunk));
+	const completed = new Promise((resolve, reject) => {
+		source.on("end", resolve);
+		source.on("error", reject);
+	});
+	source.fontSize(12).text(`Attention extraction fixture. ${"Stable local PDF text. ".repeat(40)}`);
+	source.end();
+	await completed;
+	const buf = Buffer.concat(chunks);
 	const pdfjs = await import(pathToFileURL(path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "assets", "vendor", "pdfjs.mjs")).href);
 	const task = pdfjs.getDocument({ data: new Uint8Array(buf), disableFontFace: true });
 	const doc = await task.promise;
