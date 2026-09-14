@@ -1,0 +1,69 @@
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing Git tag to publish
+        required: true
+        default: v0.5.0-beta.1
+        type: string
+      prerelease:
+        description: Mark the GitHub Release as a pre-release
+        required: true
+        default: true
+        type: boolean
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out release metadata
+        uses: actions/checkout@v7
+
+      - name: Check out tagged source
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.tag }}
+          path: release-src
+
+      - name: Pack and checksum
+        shell: bash
+        run: |
+          mkdir -p output
+          npm pack ./release-src --pack-destination output
+          (cd output && sha256sum *.tgz > dsh-hana-research-checksums.sha256)
+
+      - name: Publish GitHub Release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.tag }}
+          PRERELEASE: ${{ inputs.prerelease }}
+          NOTES_FILE: docs/releases/${{ inputs.tag }}.md
+        run: |
+          test -f "$NOTES_FILE"
+          release_args=()
+          if [[ "$PRERELEASE" == "true" ]]; then
+            release_args+=(--prerelease)
+          fi
+          release_title="Hana Research ${RELEASE_TAG#v}"
+          gh release create "$RELEASE_TAG" \
+            output/*.tgz \
+            output/*.sha256 \
+            --verify-tag \
+            --title "$release_title" \
+            --notes-file "$NOTES_FILE" \
+            "${release_args[@]}"
+
+      - name: Upload reproducible release artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: dsh-hana-research-${{ inputs.tag }}
+          path: |
+            output/*.tgz
+            output/*.sha256
+
